@@ -56,6 +56,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('🚀 [Neon CRM Dashboard v1.0.0] App initializing...');
   setupTheme();
   setupInfoModal();
   setupTabs();
@@ -68,13 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // Theme Setup (Light / Dark Mode)
 function setupTheme() {
   const savedTheme = localStorage.getItem('neon_theme');
+  console.log('🎨 [Theme] Saved theme preference:', savedTheme || 'dark (default)');
   if (savedTheme === 'light') {
     document.body.classList.add('light-theme');
     themeToggle.checked = true;
   }
 
   themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
+    const isLight = themeToggle.checked;
+    console.log(`🎨 [Theme] User toggled theme to: ${isLight ? 'Light Mode' : 'Dark Mode'}`);
+    if (isLight) {
       document.body.classList.add('light-theme');
       localStorage.setItem('neon_theme', 'light');
       showToast('Switched to Light Mode', 'info');
@@ -88,7 +92,9 @@ function setupTheme() {
 
 // Info & Changelog Modal Setup
 function setupInfoModal() {
+  console.log('ℹ️ [Info Modal] Setting up info modal event listeners');
   infoBtn.addEventListener('click', () => {
+    console.log('ℹ️ [Info Modal] Opening v1.0.0 info & changelog modal');
     infoModal.classList.add('open');
     infoModal.setAttribute('aria-hidden', 'false');
   });
@@ -209,9 +215,11 @@ function showToast(message, type = 'success') {
 
 // Fetch App Configurations and Status
 async function checkAppStatus() {
+  console.log('📡 [API Status] Checking Neon CRM backend server status...');
   try {
     const res = await fetch('/api/status');
     const status = await res.json();
+    console.log('📡 [API Status] Server status response:', status);
     
     // Update credentials forms with existing server config values
     document.getElementById('neonOrgId').value = status.config.neonOrgId || '';
@@ -233,20 +241,22 @@ async function checkAppStatus() {
       if (status.apiConnectionValid) {
         connectionStatus.classList.add('status-connected');
         connectionStatus.querySelector('.status-text').textContent = 'API Connected';
+        console.log('✅ [API Status] Neon CRM API credentials valid and connected.');
       } else {
         connectionStatus.classList.add('status-disconnected');
         connectionStatus.querySelector('.status-text').textContent = 'API Error';
-        console.warn('API connection validation error:', status.apiErrorMessage);
+        console.warn('⚠️ [API Status] Neon CRM API connection error:', status.apiErrorMessage);
       }
     } else {
       connectionStatus.classList.add('status-disconnected');
       connectionStatus.querySelector('.status-text').textContent = 'API Unconfigured';
+      console.warn('⚠️ [API Status] Neon CRM credentials not yet configured.');
     }
   } catch (err) {
-    console.error('Failed to retrieve server status:', err);
+    console.error('❌ [API Status] Failed to reach server status endpoint:', err);
     connectionStatus.className = 'connection-status status-disconnected';
     connectionStatus.querySelector('.status-text').textContent = 'Server Offline';
-    showToast('Failed to contact server backend. Operating in local-only demo mode.', 'error');
+    showToast('Failed to contact server backend.', 'error');
   }
 }
 
@@ -257,6 +267,7 @@ async function loadData() {
   
   const reportType = reportSelector.value;
   const url = `/api/activities?report=${reportType}`;
+  console.log(`📊 [Data] Requesting activities with report view: "${reportType}" from ${url}...`);
 
   try {
     const res = await fetch(url);
@@ -267,6 +278,7 @@ async function loadData() {
 
     const data = await res.json();
     activities = data.searchResults || [];
+    console.log(`📊 [Data] Received ${activities.length} activities from server.`);
     
     // Sort default descending by date
     activities.sort((a, b) => new Date(b['Activity Date']) - new Date(a['Activity Date']));
@@ -278,7 +290,7 @@ async function loadData() {
     currentPage = 1;
     filterAndRenderTable();
   } catch (err) {
-    console.error('Failed to load activities:', err);
+    console.error('❌ [Data] Failed to load activities:', err);
     showToast(`Failed to load activities: ${err.message}`, 'error');
     tableBody.innerHTML = `<tr><td colspan="8" class="empty-table-state" style="color:var(--danger)">Error: ${err.message}</td></tr>`;
   }
@@ -804,7 +816,9 @@ function renderDistributionCharts() {
           text: 'By Status',
           color: '#ffffff',
           font: { family: 'Outfit', size: 12, weight: 'bold' }
+        }
       }
     }
   });
 }
+
