@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Stunning neon-themed CRM activities dashboard and automated email scheduler for Neon One CRM.">
+  <title>Neon CRM Activities Dashboard</title>
+  <!-- Google Fonts: Outfit and Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Local Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Glow FX -->
+  <div class="glow-bg-1"></div>
+  <div class="glow-bg-2"></div>
+
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-branding">
+        <h1 class="logo-text">NEON<span>CRM</span></h1>
+        <p class="tagline">Activities Intelligence Center</p>
+      </div>
+
+      <div class="header-controls">
+        <!-- Report Selector -->
+        <div class="control-group">
+          <label class="switch-label" for="reportSelector">Report View</label>
+          <select id="reportSelector" class="filter-select report-select">
+            <option value="all">All Logged Activities</option>
+            <option value="staff-activity">Staff Activity Report</option>
+          </select>
+        </div>
+
+        <!-- Live vs Mock Indicator -->
+        <div class="control-group">
+          <label class="switch-label" for="mockModeToggle">Demo Mode</label>
+          <label class="switch">
+            <input type="checkbox" id="mockModeToggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="connection-status status-loading">
+          <span class="status-dot"></span>
+          <span class="status-text">Checking API...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI Panels Row -->
+    <section class="kpi-section" aria-label="Key Performance Indicators">
+      <div class="kpi-card" id="kpi-total">
+        <div class="kpi-glow"></div>
+        <div class="kpi-content">
+          <span class="kpi-title">Total Logged</span>
+          <h2 class="kpi-value" id="val-total">0</h2>
+          <span class="kpi-meta">All-time activities</span>
+        </div>
+        <div class="kpi-icon">📋</div>
+      </div>
+
+      <div class="kpi-card" id="kpi-completed">
+        <div class="kpi-glow"></div>
+        <div class="kpi-content">
+          <span class="kpi-title">Completed</span>
+          <h2 class="kpi-value" id="val-completed">0</h2>
+          <span class="kpi-meta" id="pct-completed">0% completion rate</span>
+        </div>
+        <div class="kpi-icon">✅</div>
+      </div>
+
+      <div class="kpi-card" id="kpi-pending">
+        <div class="kpi-glow"></div>
+        <div class="kpi-content">
+          <span class="kpi-title">Pending</span>
+          <h2 class="kpi-value" id="val-pending">0</h2>
+          <span class="kpi-meta">Active tasks & follow-ups</span>
+        </div>
+        <div class="kpi-icon">⏳</div>
+      </div>
+
+      <div class="kpi-card" id="kpi-overdue">
+        <div class="kpi-glow"></div>
+        <div class="kpi-content">
+          <span class="kpi-title">Overdue</span>
+          <h2 class="kpi-value" id="val-overdue">0</h2>
+          <span class="kpi-meta" style="color: var(--neon-pink)">Requires immediate action</span>
+        </div>
+        <div class="kpi-icon">🚨</div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-grid" aria-label="Data Visualizations">
+      <!-- Activity Timeline Chart -->
+      <div class="chart-panel card-glow">
+        <h3 class="panel-title">Activity Frequency & Volume</h3>
+        <div class="chart-container">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Activity Breakdowns (Priority/Type) -->
+      <div class="chart-panel card-glow">
+        <h3 class="panel-title">Priority & Status Distribution</h3>
+        <div class="chart-container-split">
+          <div class="split-chart">
+            <canvas id="priorityChart"></canvas>
+          </div>
+          <div class="split-chart">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Report Builder -->
+    <section class="ai-section card-glow" aria-label="AI Report Builder">
+      <h3 class="panel-title">✨ AI Report Builder via Gemini</h3>
+      <p class="panel-subtitle">Describe the report you want to generate in natural language (e.g., <i>"Show me high-priority follow-ups from this month that aren't Check-Ins"</i>).</p>
+      
+      <div class="ai-input-group">
+        <textarea id="aiPrompt" placeholder="Type your custom report request here..." rows="2"></textarea>
+        <button id="generateAiReportBtn" class="btn btn-primary btn-ai-generate">
+          <span class="btn-icon">⚡</span> Generate AI Report
+        </button>
+      </div>
+
+      <div id="aiExplanationBox" class="ai-explanation-box hidden">
+        <div class="ai-explanation-header">
+          <span class="ai-explanation-icon">🤖</span>
+          <strong>AI Report Criteria:</strong>
+        </div>
+        <p id="aiExplanationText" class="ai-explanation-text"></p>
+        <button id="clearAiReportBtn" class="btn btn-secondary btn-small">
+          ↩ Reset to Standard View
+        </button>
+      </div>
+    </section>
+
+    <!-- Activity Data Explorer -->
+    <section class="data-section card-glow" aria-label="Activity Data Explorer">
+      <div class="panel-header-actions">
+        <h3 class="panel-title">Activity Ledger</h3>
+        <div class="actions-group">
+          <!-- Search -->
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="tableSearch" placeholder="Search subject or notes...">
+          </div>
+          <!-- Filter: Status -->
+          <select id="filterStatus" class="filter-select" aria-label="Filter by Status">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Completed">Completed</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Deferred">Deferred</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <!-- Filter: Priority -->
+          <select id="filterPriority" class="filter-select" aria-label="Filter by Priority">
+            <option value="">All Priorities</option>
+            <option value="High">High</option>
+            <option value="Normal">Normal</option>
+            <option value="Low">Low</option>
+          </select>
+          <!-- Export Button -->
+          <button id="exportCsvBtn" class="btn btn-secondary">
+            <span>📥</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="table-scroll-container">
+        <table id="activitiesTable" class="interactive-table">
+          <thead>
+            <tr>
+              <th scope="col" class="sortable" data-sort="Activity Date">Date ↕</th>
+              <th scope="col">Subject</th>
+              <th scope="col">Type</th>
+              <th scope="col">Member ID</th>
+              <th scope="col">Assigned To</th>
+              <th scope="col" class="sortable" data-sort="Status">Status ↕</th>
+              <th scope="col" class="sortable" data-sort="Priority">Priority ↕</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Dynamically populated rows -->
+            <tr>
+              <td colspan="8" class="empty-table-state">Loading activities ledger...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="table-pagination">
+        <span class="pagination-info" id="paginationInfo">Showing 0-0 of 0 entries</span>
+        <div class="pagination-controls">
+          <button id="prevPageBtn" class="btn btn-nav" disabled>◀ Prev</button>
+          <span class="pagination-active-page" id="currentPageNum">1</span>
+          <button id="nextPageBtn" class="btn btn-nav" disabled>Next ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Configuration Panels (Tabs) -->
+    <section class="config-section card-glow" aria-label="Configuration Hub">
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="neonConfigTab">🔑 Neon CRM API Config</button>
+        <button class="tab-btn" data-tab="emailConfigTab">📧 Email Reports Setup</button>
+      </div>
+
+      <div class="tabs-content">
+        <!-- Tab 1: Neon API Config -->
+        <div id="neonConfigTab" class="tab-pane active">
+          <form id="neonConfigForm" class="config-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="neonOrgId">Organization ID</label>
+                <input type="text" id="neonOrgId" name="neonOrgId" placeholder="Enter Neon Org ID" required>
+                <span class="form-hint">Your numeric ID found in your Neon CRM account settings.</span>
+              </div>
+              <div class="form-group">
+                <label for="neonApiKey">API Key</label>
+                <input type="password" id="neonApiKey" name="neonApiKey" placeholder="••••••••••••••••••••">
+                <span class="form-hint">API user key generated within Neon CRM settings. Leave blank to retain existing key.</span>
+              </div>
+              <div class="form-group full-width">
+                <label for="geminiApiKey">Gemini API Key</label>
+                <input type="password" id="geminiApiKey" name="geminiApiKey" placeholder="••••••••••••••••••••">
+                <span class="form-hint">Used to power the AI Report Builder. Get one for free at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--neon-cyan); text-decoration: underline;">Google AI Studio</a>. Leave blank to retain.</span>
+              </div>
+              <div class="form-group full-width">
+                <label for="neonApiUrl">API Base URL</label>
+                <input type="url" id="neonApiUrl" name="neonApiUrl" value="https://api.neoncrm.com/v2" required>
+                <span class="form-hint">Change only if using a sandbox or test environment.</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="saveNeonBtn" class="btn btn-primary">Save & Connect Account</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 2: Email Reports Config -->
+        <div id="emailConfigTab" class="tab-pane">
+          <form id="emailConfigForm" class="config-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="smtpHost">SMTP Host Server</label>
+                <input type="text" id="smtpHost" name="smtpHost" placeholder="smtp.gmail.com" required>
+              </div>
+              <div class="form-group">
+                <label for="smtpPort">SMTP Port</label>
+                <input type="number" id="smtpPort" name="smtpPort" value="587" required>
+              </div>
+              <div class="form-group">
+                <label class="checkbox-container" for="smtpSecure">
+                  <input type="checkbox" id="smtpSecure" name="smtpSecure">
+                  <span class="checkbox-checkmark"></span>
+                  Use SSL (Port 465)
+                </label>
+                <span class="form-hint">Check if using SSL; uncheck if using TLS (Port 587).</span>
+              </div>
+              <div class="form-group">
+                <label for="smtpUser">SMTP Username</label>
+                <input type="text" id="smtpUser" name="smtpUser" placeholder="username@gmail.com" required>
+              </div>
+              <div class="form-group">
+                <label for="smtpPass">SMTP Password</label>
+                <input type="password" id="smtpPass" name="smtpPass" placeholder="••••••••••••••••">
+                <span class="form-hint">Enter your email password or App-Specific Password.</span>
+              </div>
+              <div class="form-group">
+                <label for="emailFrom">Sender Name & Address</label>
+                <input type="text" id="emailFrom" name="emailFrom" placeholder='"Neon CRM Dashboard" <noreply@yourdomain.com>' required>
+              </div>
+              <div class="form-group">
+                <label for="emailRecipient">Recipient Email Address</label>
+                <input type="email" id="emailRecipient" name="emailRecipient" placeholder="yourbox@domain.com" required>
+                <span class="form-hint">Address where dashboard summaries should be emailed.</span>
+              </div>
+              <div class="form-group">
+                <label for="emailSchedule">Cron Schedule Expression</label>
+                <input type="text" id="emailSchedule" name="emailSchedule" value="0 8 * * *" required>
+                <span class="form-hint">Default <code>0 8 * * *</code> is daily at 8:00 AM. <code>0 8 * * 1</code> is weekly on Mondays.</span>
+              </div>
+              <div class="form-group">
+                <label for="emailReportType">Report to Dispatch</label>
+                <select id="emailReportType" name="emailReportType" class="filter-select">
+                  <option value="all">All Logged Activities</option>
+                  <option value="staff-activity">Staff Activity Report</option>
+                </select>
+                <span class="form-hint">Select which report view to compile and email.</span>
+              </div>
+              <div class="form-group">
+                <label class="checkbox-container" for="emailEnabled">
+                  <input type="checkbox" id="emailEnabled" name="emailEnabled">
+                  <span class="checkbox-checkmark"></span>
+                  Enable Scheduled Reports
+                </label>
+                <span class="form-hint">Enable automatic background emails matching schedule.</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="saveEmailBtn" class="btn btn-primary">Save Email Settings</button>
+              <button type="button" id="sendTestEmailBtn" class="btn btn-secondary">⚡ Send Test Email Now</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="activityModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h4 id="modalSubject">Activity Subject</h4>
+        <button id="closeModalBtn" class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-info-item">
+            <span class="modal-info-label">Activity Date</span>
+            <span id="modalDate" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Activity ID</span>
+            <span id="modalId" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Activity Type</span>
+            <span id="modalType" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Member ID</span>
+            <span id="modalMemberId" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Assigned Staff</span>
+            <span id="modalStaff" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Priority</span>
+            <span id="modalPriority" class="modal-info-val">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Status</span>
+            <span id="modalStatus" class="modal-info-val">-</span>
+          </div>
+        </div>
+        <div class="modal-notes-area">
+          <span class="modal-info-label">Activity Notes</span>
+          <p id="modalNotes" class="modal-notes-content">No notes entered for this activity.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- App Main Javascript -->
+  <script src="app.js"></script>
+</body>
+</html>
