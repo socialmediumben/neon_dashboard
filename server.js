@@ -146,7 +146,6 @@ const updateEnvFile = (config) => {
 app.get('/api/status', async (req, res) => {
   const isNeonConfigured = !!(process.env.NEON_ORG_ID && process.env.NEON_API_KEY);
   const isSMTPConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-  const isGeminiConfigured = !!process.env.GEMINI_API_KEY;
 
   let apiConnectionValid = false;
   let apiErrorMessage = '';
@@ -179,7 +178,6 @@ app.get('/api/status', async (req, res) => {
   res.json({
     neonConfigured: isNeonConfigured,
     smtpConfigured: isSMTPConfigured,
-    geminiConfigured: isGeminiConfigured,
     apiConnectionValid,
     apiErrorMessage,
     config: {
@@ -193,8 +191,7 @@ app.get('/api/status', async (req, res) => {
       emailRecipient: process.env.EMAIL_RECIPIENT || '',
       emailSchedule: process.env.EMAIL_SCHEDULE || '0 8 * * *',
       emailEnabled: process.env.EMAIL_ENABLED === 'true',
-      emailReportType: process.env.EMAIL_REPORT_TYPE || 'all',
-      geminiApiKey: process.env.GEMINI_API_KEY ? '••••••••' : ''
+      emailReportType: process.env.EMAIL_REPORT_TYPE || 'all'
     }
   });
 });
@@ -215,8 +212,7 @@ app.post('/api/config', (req, res) => {
       emailRecipient,
       emailSchedule,
       emailEnabled,
-      emailReportType,
-      geminiApiKey
+      emailReportType
     } = req.body;
 
     const newConfig = {};
@@ -233,7 +229,6 @@ app.post('/api/config', (req, res) => {
     if (emailSchedule !== undefined) newConfig.EMAIL_SCHEDULE = emailSchedule.trim();
     if (emailEnabled !== undefined) newConfig.EMAIL_ENABLED = emailEnabled.toString();
     if (emailReportType !== undefined) newConfig.EMAIL_REPORT_TYPE = emailReportType.trim();
-    if (geminiApiKey !== undefined) newConfig.GEMINI_API_KEY = geminiApiKey.trim();
 
     updateEnvFile(newConfig);
     
@@ -409,227 +404,6 @@ app.get('/api/activities', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// API: AI Report Builder via Gemini
-app.post('/api/ai-report', async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ success: false, message: 'Prompt is required.' });
-  }
-
-  const isMock = !process.env.NEON_ORG_ID || !process.env.NEON_API_KEY;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-
-  if (!geminiApiKey) {
-    return res.status(400).json({
-      success: false,
-      message: 'Gemini API Key is not configured. Please add your key in the settings panel at the bottom of the page.'
-    });
-  }
-
-  try {
-    // Construct System Instructions for translating natural language prompts to Neon API v2
-    const systemPrompt = `You are a Neon CRM Search API translation assistant.
-Your job is to translate a user's natural language request into a valid JSON query matching the Neon CRM API v2 search structure for activities.
-
-Available Search Fields in Neon CRM:
-- "Activity Account ID" (operators: EQUAL, NOT_EQUAL, IN_RANGE, GREATER_THAN, LESS_THAN)
-- "Activity Subject" (operators: EQUAL, NOT_EQUAL, CONTAIN)
-- "Activity Location" (operators: EQUAL, CONTAIN)
-- "Activity Note" (operators: EQUAL, CONTAIN)
-- "Activity Status" (operators: EQUAL, NOT_EQUAL). Typical values are "Completed", "Pending", "In Progress", "Deferred", "Cancelled".
-- "Activity Priority" (operators: EQUAL, NOT_EQUAL). Typical values are "High", "Normal", "Low".
-- "Activity Start Date" (operators: EQUAL, NOT_EQUAL, LESS_THAN, GREATER_THAN, GREATER_AND_EQUAL, LESS_AND_EQUAL, IN_RANGE). Format: YYYY-MM-DD.
-- "Activity End Date" (operators: EQUAL, NOT_EQUAL, LESS_THAN, GREATER_THAN, GREATER_AND_EQUAL, LESS_AND_EQUAL, IN_RANGE). Format: YYYY-MM-DD.
-- "Activity Solicitation Method" (operators: EQUAL, NOT_EQUAL). Often used as Activity Type.
-
-Crucial Constraints:
-1. "searchFields" array CANNOT be empty. If no specific fields are mentioned, default to GREATER_THAN for "Activity Start Date" of "1970-01-01".
-2. Neon API does NOT support negative text filters like "NOT_CONTAIN". If the user requests an exclusion keyword (e.g. "not containing check-in" or "excluding phone calls"), do NOT use it in "searchFields". Instead, populate the "postFilter" object in the response.
-3. Today's date is ${new Date().toISOString().split('T')[0]}. Use this to compute relative date ranges (e.g. "last week", "this month").
-4. ALWAYS return a JSON response matching the schema below. Do not output markdown code blocks.
-
-Response Schema:
-{
-  "searchFields": [
-    {
-      "field": "Activity Priority",
-      "operator": "EQUAL",
-      "value": "High"
-    }
-  ],
-  "postFilter": {
-    "field": "Activity Subject",
-    "excludeKeyword": "Check-In"
-  },
-  "explanation": "Brief natural language description of what report was generated."
-}
-`;
-
-    // Query Gemini
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-    const geminiBody = {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: `System Instructions:\n${systemPrompt}\n\nUser Request: "${prompt}"` }
-          ]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: 'application/json'
-      }
-    };
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody)
-    });
-
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text();
-      throw new Error(`Gemini API Error: HTTP ${geminiRes.status} - ${errorText}`);
-    }
-
-    const geminiData = await geminiRes.json();
-    const responseText = geminiData.candidates[0].content.parts[0].text;
-    const parsedQuery = JSON.parse(responseText);
-
-    let searchResults = [];
-
-    if (isMock) {
-      // Demo Mode: apply filters locally in memory on mock activities
-      const mockData = generateMockActivities();
-      searchResults = mockData.filter(item => {
-        for (const filter of (parsedQuery.searchFields || [])) {
-          let fieldVal = '';
-          if (filter.field === 'Activity Priority') fieldVal = item.Priority;
-          else if (filter.field === 'Activity Status') fieldVal = item.Status;
-          else if (filter.field === 'Activity Start Date') fieldVal = item['Activity Date'];
-          else if (filter.field === 'Activity Subject') fieldVal = item['Activity Subject'];
-          else if (filter.field === 'Activity Note') fieldVal = item['Activity Note'];
-          else if (filter.field === 'Activity Solicitation Method') fieldVal = item['Activity Type'];
-          else if (filter.field === 'Activity Contact Account ID') fieldVal = item['Client ID'];
-
-          if (fieldVal === undefined || fieldVal === null) continue;
-          
-          const val = filter.value.toString().toLowerCase();
-          const fVal = fieldVal.toString().toLowerCase();
-
-          if (filter.operator === 'EQUAL' && fVal !== val) return false;
-          if (filter.operator === 'NOT_EQUAL' && fVal === val) return false;
-          if (filter.operator === 'CONTAIN' && !fVal.includes(val)) return false;
-          if (filter.operator === 'GREATER_THAN' && new Date(fieldVal) <= new Date(filter.value)) return false;
-          if (filter.operator === 'LESS_THAN' && new Date(fieldVal) >= new Date(filter.value)) return false;
-          if (filter.operator === 'GREATER_AND_EQUAL' && new Date(fieldVal) < new Date(filter.value)) return false;
-          if (filter.operator === 'LESS_AND_EQUAL' && new Date(fieldVal) > new Date(filter.value)) return false;
-        }
-        return true;
-      });
-    } else {
-      // Live Mode: query Neon API with loops
-      const auth = Buffer.from(`${process.env.NEON_ORG_ID}:${process.env.NEON_API_KEY}`).toString('base64');
-      let currentPage = 0;
-      let totalPages = 1;
-      let rawResults = [];
-
-      while (currentPage < totalPages) {
-        const body = {
-          searchFields: parsedQuery.searchFields || [],
-          outputFields: [
-            'Activity ID',
-            'Activity Subject',
-            'Activity Start Date',
-            'Activity Status',
-            'Activity Priority',
-            'Activity System User',
-            'Activity Contact Account ID',
-            'Account Name',
-            'Activity Solicitation Method',
-            'Activity Note'
-          ],
-          pagination: {
-            currentPage,
-            pageSize: 200,
-            sortColumn: 'Activity Start Date',
-            sortDirection: 'DESC'
-          }
-        };
-
-        const response = await fetch(`${process.env.NEON_API_URL || 'https://api.neoncrm.com/v2'}/activities/search`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'NEON-API-VERSION': '2.11',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Neon API Error: HTTP ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        rawResults = rawResults.concat(data.searchResults || []);
-        totalPages = data.pagination ? data.pagination.totalPages : 1;
-        currentPage++;
-
-        if (currentPage >= 15) break;
-      }
-
-      // Translate to unified schema
-      searchResults = rawResults.map(item => ({
-        'Activity ID': item['Activity ID'] || '',
-        'Activity Subject': item['Activity Subject'] || 'Untitled Activity',
-        'Activity Date': item['Activity Start Date'] || '',
-        'Status': item['Activity Status'] || 'Pending',
-        'Priority': item['Activity Priority'] || 'Normal',
-        'Activity Type': item['Activity Solicitation Method'] || 'Activity',
-        'Client ID': item['Activity Contact Account ID'] || '',
-        'Client Name': item['Account Name'] || '',
-        'Created By': item['Activity System User'] || '',
-        'Activity Note': item['Activity Note'] || ''
-      }));
-    }
-
-    // Apply post-filtering exclusions (on subject, note, or solicitation method)
-    if (parsedQuery.postFilter) {
-      const pf = parsedQuery.postFilter;
-      let fieldKey = 'Activity Subject';
-      if (pf.field === 'Activity Subject') fieldKey = 'Activity Subject';
-      else if (pf.field === 'Activity Note') fieldKey = 'Activity Note';
-      else if (pf.field === 'Activity Solicitation Method') fieldKey = 'Activity Type';
-
-      if (pf.excludeKeyword) {
-        const exclude = pf.excludeKeyword.toLowerCase();
-        searchResults = searchResults.filter(item => {
-          const val = (item[fieldKey] || '').toString().toLowerCase();
-          return !val.includes(exclude);
-        });
-      }
-    }
-
-    res.json({
-      success: true,
-      explanation: parsedQuery.explanation || 'Report generated by Gemini AI.',
-      searchResults,
-      pagination: {
-        currentPage: 0,
-        pageSize: 100,
-        totalResults: searchResults.length,
-        totalPages: 1
-      },
-      mock: isMock
-    });
-
-  } catch (err) {
-    res.status(500).json({ success: false, message: `Failed to compile AI report: ${err.message}` });
   }
 });
 

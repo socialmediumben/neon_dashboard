@@ -12,7 +12,8 @@ let priorityChart = null;
 let statusChart = null;
 
 // DOM Elements
-const mockModeToggle = document.getElementById('mockModeToggle');
+const themeToggle = document.getElementById('themeToggle');
+const infoBtn = document.getElementById('infoBtn');
 const reportSelector = document.getElementById('reportSelector');
 const connectionStatus = document.getElementById('connectionStatus');
 const valTotal = document.getElementById('val-total');
@@ -35,14 +36,9 @@ const neonConfigForm = document.getElementById('neonConfigForm');
 const emailConfigForm = document.getElementById('emailConfigForm');
 const sendTestEmailBtn = document.getElementById('sendTestEmailBtn');
 
-// AI Elements
-const aiPrompt = document.getElementById('aiPrompt');
-const generateAiReportBtn = document.getElementById('generateAiReportBtn');
-const aiExplanationBox = document.getElementById('aiExplanationBox');
-const aiExplanationText = document.getElementById('aiExplanationText');
-const clearAiReportBtn = document.getElementById('clearAiReportBtn');
-
 // Modal Elements
+const infoModal = document.getElementById('infoModal');
+const closeInfoModalBtn = document.getElementById('closeInfoModalBtn');
 const activityModal = document.getElementById('activityModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalSubject = document.getElementById('modalSubject');
@@ -60,12 +56,55 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
+  setupTheme();
+  setupInfoModal();
   setupTabs();
   setupEventListeners();
   checkAppStatus().then(() => {
     loadData();
   });
 });
+
+// Theme Setup (Light / Dark Mode)
+function setupTheme() {
+  const savedTheme = localStorage.getItem('neon_theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    themeToggle.checked = true;
+  }
+
+  themeToggle.addEventListener('change', () => {
+    if (themeToggle.checked) {
+      document.body.classList.add('light-theme');
+      localStorage.setItem('neon_theme', 'light');
+      showToast('Switched to Light Mode', 'info');
+    } else {
+      document.body.classList.remove('light-theme');
+      localStorage.setItem('neon_theme', 'dark');
+      showToast('Switched to Dark Mode', 'info');
+    }
+  });
+}
+
+// Info & Changelog Modal Setup
+function setupInfoModal() {
+  infoBtn.addEventListener('click', () => {
+    infoModal.classList.add('open');
+    infoModal.setAttribute('aria-hidden', 'false');
+  });
+
+  closeInfoModalBtn.addEventListener('click', () => {
+    infoModal.classList.remove('open');
+    infoModal.setAttribute('aria-hidden', 'true');
+  });
+
+  infoModal.addEventListener('click', (e) => {
+    if (e.target === infoModal) {
+      infoModal.classList.remove('open');
+      infoModal.setAttribute('aria-hidden', 'true');
+    }
+  });
+}
 
 // Tab Setup
 function setupTabs() {
@@ -84,12 +123,6 @@ function setupTabs() {
 
 // Setup Event Listeners
 function setupEventListeners() {
-  // Mock Mode Toggle
-  mockModeToggle.addEventListener('change', () => {
-    showToast(`Switched to ${mockModeToggle.checked ? 'Demo (Mock) Data' : 'Live Neon CRM Data'}`, 'info');
-    loadData();
-  });
-
   // Report Selector Toggle
   reportSelector.addEventListener('change', () => {
     showToast(`Loading Report: ${reportSelector.options[reportSelector.selectedIndex].text}`, 'success');
@@ -148,9 +181,7 @@ function setupEventListeners() {
   emailConfigForm.addEventListener('submit', handleEmailConfigSubmit);
   sendTestEmailBtn.addEventListener('click', handleSendTestEmail);
 
-  // AI Report Event Listeners
-  generateAiReportBtn.addEventListener('click', handleAiReportSubmit);
-  clearAiReportBtn.addEventListener('click', clearAiReport);
+
 }
 
 // Toast Notifications Helper
@@ -184,7 +215,6 @@ async function checkAppStatus() {
     
     // Update credentials forms with existing server config values
     document.getElementById('neonOrgId').value = status.config.neonOrgId || '';
-    document.getElementById('geminiApiKey').value = status.config.geminiApiKey || '';
     document.getElementById('neonApiUrl').value = status.config.neonApiUrl || 'https://api.neoncrm.com/v2';
     
     document.getElementById('smtpHost').value = status.config.smtpHost || '';
@@ -203,10 +233,6 @@ async function checkAppStatus() {
       if (status.apiConnectionValid) {
         connectionStatus.classList.add('status-connected');
         connectionStatus.querySelector('.status-text').textContent = 'API Connected';
-        // Auto uncheck demo mode if live API is working and configured
-        if (mockModeToggle.checked) {
-          mockModeToggle.checked = false;
-        }
       } else {
         connectionStatus.classList.add('status-disconnected');
         connectionStatus.querySelector('.status-text').textContent = 'API Error';
@@ -229,9 +255,8 @@ async function loadData() {
   // Clear table state
   tableBody.innerHTML = '<tr><td colspan="8" class="empty-table-state">Loading activities ledger...</td></tr>';
   
-  const useMock = mockModeToggle.checked;
   const reportType = reportSelector.value;
-  const url = `/api/activities?mock=${useMock}&report=${reportType}`;
+  const url = `/api/activities?report=${reportType}`;
 
   try {
     const res = await fetch(url);
@@ -252,11 +277,6 @@ async function loadData() {
     // Render Table
     currentPage = 1;
     filterAndRenderTable();
-
-    if (data.mock && !useMock) {
-      showToast('API credentials missing. Loaded demo data instead.', 'info');
-      mockModeToggle.checked = true;
-    }
   } catch (err) {
     console.error('Failed to load activities:', err);
     showToast(`Failed to load activities: ${err.message}`, 'error');
@@ -787,61 +807,4 @@ function renderDistributionCharts() {
       }
     }
   });
-}
-
-// AI Report Submit Handler
-async function handleAiReportSubmit() {
-  const prompt = aiPrompt.value.trim();
-  if (!prompt) {
-    showToast('Please type a prompt first.', 'error');
-    return;
-  }
-
-  generateAiReportBtn.disabled = true;
-  generateAiReportBtn.innerHTML = '✨ Analyzing...';
-  
-  // Clear table state
-  tableBody.innerHTML = '<tr><td colspan="8" class="empty-table-state">Gemini AI is parsing criteria & fetching CRM records...</td></tr>';
-
-  try {
-    const res = await fetch('/api/ai-report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'AI failed to compile report.');
-
-    // Save search results locally
-    activities = data.searchResults || [];
-    
-    // Process metrics & update graphs
-    processMetricsAndCharts();
-    
-    // Render
-    currentPage = 1;
-    filterAndRenderTable();
-
-    // Show explanation box
-    aiExplanationText.textContent = data.explanation;
-    aiExplanationBox.classList.remove('hidden');
-
-    showToast(`AI Report Loaded: ${activities.length} matching activities found!`, 'success');
-  } catch (err) {
-    console.error('AI Report Error:', err);
-    showToast(err.message, 'error');
-    tableBody.innerHTML = `<tr><td colspan="8" class="empty-table-state" style="color:var(--danger)">Error: ${err.message}</td></tr>`;
-  } finally {
-    generateAiReportBtn.disabled = false;
-    generateAiReportBtn.innerHTML = '<span class="btn-icon">⚡</span> Generate AI Report';
-  }
-}
-
-// Clear AI Report reset
-function clearAiReport() {
-  aiPrompt.value = '';
-  aiExplanationBox.classList.add('hidden');
-  showToast('Reset to standard query view.', 'info');
-  loadData();
 }

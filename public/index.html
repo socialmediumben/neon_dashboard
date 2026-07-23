@@ -39,11 +39,11 @@
           </select>
         </div>
 
-        <!-- Live vs Mock Indicator -->
+        <!-- Light Mode Toggle -->
         <div class="control-group">
-          <label class="switch-label" for="mockModeToggle">Demo Mode</label>
+          <label class="switch-label" for="themeToggle">Light Mode</label>
           <label class="switch">
-            <input type="checkbox" id="mockModeToggle" checked>
+            <input type="checkbox" id="themeToggle">
             <span class="slider round"></span>
           </label>
         </div>
@@ -53,6 +53,11 @@
           <span class="status-dot"></span>
           <span class="status-text">Checking API...</span>
         </div>
+
+        <!-- System Info & Version Icon -->
+        <button id="infoBtn" class="info-icon-btn" title="System Info & Changelog" aria-label="System Info & Changelog">
+          ⓘ
+        </button>
       </div>
     </header>
 
@@ -123,29 +128,7 @@
       </div>
     </section>
 
-    <!-- AI Report Builder -->
-    <section class="ai-section card-glow" aria-label="AI Report Builder">
-      <h3 class="panel-title">✨ AI Report Builder via Gemini</h3>
-      <p class="panel-subtitle">Describe the report you want to generate in natural language (e.g., <i>"Show me high-priority follow-ups from this month that aren't Check-Ins"</i>).</p>
-      
-      <div class="ai-input-group">
-        <textarea id="aiPrompt" placeholder="Type your custom report request here..." rows="2"></textarea>
-        <button id="generateAiReportBtn" class="btn btn-primary btn-ai-generate">
-          <span class="btn-icon">⚡</span> Generate AI Report
-        </button>
-      </div>
 
-      <div id="aiExplanationBox" class="ai-explanation-box hidden">
-        <div class="ai-explanation-header">
-          <span class="ai-explanation-icon">🤖</span>
-          <strong>AI Report Criteria:</strong>
-        </div>
-        <p id="aiExplanationText" class="ai-explanation-text"></p>
-        <button id="clearAiReportBtn" class="btn btn-secondary btn-small">
-          ↩ Reset to Standard View
-        </button>
-      </div>
-    </section>
 
     <!-- Activity Data Explorer -->
     <section class="data-section card-glow" aria-label="Activity Data Explorer">
@@ -236,11 +219,6 @@
                 <label for="neonApiKey">API Key</label>
                 <input type="password" id="neonApiKey" name="neonApiKey" placeholder="••••••••••••••••••••">
                 <span class="form-hint">API user key generated within Neon CRM settings. Leave blank to retain existing key.</span>
-              </div>
-              <div class="form-group full-width">
-                <label for="geminiApiKey">Gemini API Key</label>
-                <input type="password" id="geminiApiKey" name="geminiApiKey" placeholder="••••••••••••••••••••">
-                <span class="form-hint">Used to power the AI Report Builder. Get one for free at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--neon-cyan); text-decoration: underline;">Google AI Studio</a>. Leave blank to retain.</span>
               </div>
               <div class="form-group full-width">
                 <label for="neonApiUrl">API Base URL</label>
@@ -366,6 +344,45 @@
         <div class="modal-notes-area">
           <span class="modal-info-label">Activity Notes</span>
           <p id="modalNotes" class="modal-notes-content">No notes entered for this activity.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info & Version Changelog Modal -->
+  <div id="infoModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card info-modal-card">
+      <div class="modal-header">
+        <div class="info-header-title">
+          <h4>Neon CRM Activities Intelligence</h4>
+          <span class="version-badge">v1.0.0</span>
+        </div>
+        <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
+      </div>
+      <div class="modal-body info-modal-body">
+        <div class="info-summary-box">
+          <p><strong>Organization:</strong> socialmedium</p>
+          <p><strong>API Engine:</strong> Neon CRM API v2.11</p>
+          <p><strong>Live URL:</strong> <a href="https://neon-dashboard.onrender.com" target="_blank" class="info-link">neon-dashboard.onrender.com</a></p>
+        </div>
+
+        <div class="changelog-section">
+          <h5 class="changelog-title">📋 Version History & Changelog</h5>
+
+          <div class="changelog-item">
+            <div class="changelog-version">
+              <span class="version-tag">v1.0.0</span>
+              <span class="release-date">July 2026</span>
+            </div>
+            <ul class="changelog-list">
+              <li>🚀 Initial Version 1.0 Release deployed live on Render!</li>
+              <li>📊 Recreated Staff Activity Report with automatic Check-In exclusions.</li>
+              <li>🔄 Chronological descending sorting (showing most recent activities first).</li>
+              <li>🌓 Light Mode and Dark Mode visual theme switcher with saved preferences.</li>
+              <li>📧 Scheduled HTML email report digests via SMTP background cron worker.</li>
+              <li>🔍 Instant activity search, status/priority filtering, pagination, and CSV export.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
