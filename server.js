@@ -5,6 +5,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Load environment variables
 dotenv.config();
@@ -432,15 +433,30 @@ app.get('/api/activities', async (req, res) => {
         }
       };
 
-      const response = await fetch(`${process.env.NEON_API_URL || 'https://api.neoncrm.com/v2'}/activities/search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'NEON-API-VERSION': '2.11',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
+      // Throttle to respect Neon rate limit (≈1 call/sec)
+      await sleep(1100);
+      // Initialize retry counter
+      let attempts = 3;
+      let response;
+      while (attempts > 0) {
+        response = await fetch(`${process.env.NEON_API_URL || 'https://api.neoncrm.com/v2'}/activities/search`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'NEON-API-VERSION': '2.11',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        if (response.status === 429) {
+          attempts--;
+          const backoff = 2000 * (3 - attempts); // 2s,4s,6s
+          console.warn(`⚠️ [Activities API] Rate limited, retrying in ${backoff}ms (${attempts} attempts left)`);
+          await sleep(backoff);
+          continue;
+        }
+        break;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -451,8 +467,8 @@ app.get('/api/activities', async (req, res) => {
       rawResults = rawResults.concat(data.searchResults || []);
       totalPages = data.pagination ? data.pagination.totalPages : 1;
       currentPage++;
-
       // Guard to prevent runaway queries (max 15 pages = 3000 records)
+      if (currentPage >= 15) break;
       if (currentPage >= 15) break;
     }
     
