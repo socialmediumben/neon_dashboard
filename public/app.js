@@ -7,20 +7,15 @@ let sortField = 'Activity Date';
 let sortAsc = false;
 
 // Chart Instances
-let timelineChart = null;
-let priorityChart = null;
-let statusChart = null;
+let eventsChartInstance = null;
+let checkinsChartInstance = null;
+let staffChartInstance = null;
 
 // DOM Elements
 const themeToggle = document.getElementById('themeToggle');
 const infoBtn = document.getElementById('infoBtn');
 const reportSelector = document.getElementById('reportSelector');
 const connectionStatus = document.getElementById('connectionStatus');
-const valTotal = document.getElementById('val-total');
-const valCompleted = document.getElementById('val-completed');
-const pctCompleted = document.getElementById('pct-completed');
-const valPending = document.getElementById('val-pending');
-const valOverdue = document.getElementById('val-overdue');
 
 const tableSearch = document.getElementById('tableSearch');
 const filterStatus = document.getElementById('filterStatus');
@@ -61,8 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupInfoModal();
   setupTabs();
   setupEventListeners();
+  setupChartFilters();
   checkAppStatus().then(() => {
     loadData();
+    loadCharts();
   });
 });
 
@@ -283,12 +280,13 @@ async function loadData() {
     // Sort default descending by date
     activities.sort((a, b) => new Date(b['Activity Date']) - new Date(a['Activity Date']));
     
-    // Process counters, statistics, and charts
-    processMetricsAndCharts();
-    
-    // Render Table
+    // Render Ledger Table
     currentPage = 1;
     filterAndRenderTable();
+
+    // Render client-side charts (checkins + staff) from activities data
+    renderCheckinsChart();
+    renderStaffChart();
   } catch (err) {
     console.error('❌ [Data] Failed to load activities:', err);
     showToast(`Failed to load activities: ${err.message}`, 'error');
@@ -296,63 +294,301 @@ async function loadData() {
   }
 }
 
-// Process KPI Statistics & Render Chart.js
-function processMetricsAndCharts() {
-  const totalCount = activities.length;
-  const completedCount = activities.filter(a => a.Status.toLowerCase() === 'completed').length;
-  const pendingCount = activities.filter(a => a.Status.toLowerCase() === 'pending' || a.Status.toLowerCase() === 'in progress').length;
-  
-  // Calculate Overdue
-  const now = new Date();
-  now.setHours(0,0,0,0);
-  const overdueCount = activities.filter(a => {
-    const isPending = a.Status.toLowerCase() === 'pending' || a.Status.toLowerCase() === 'in progress';
-    const isPast = new Date(a['Activity Date']) < now;
-    return isPending && isPast;
-  }).length;
+// ─── Chart Filter Controls Setup ───────────────────────────────────────────
+function setupChartFilters() {
+  // Events Attendance chart filters
+  document.getElementById('applyEventsFilter').addEventListener('click', () => loadEventsChart());
+  document.getElementById('clearEventsFilter').addEventListener('click', () => {
+    document.getElementById('eventsAfter').value = '';
+    document.getElementById('eventsBefore').value = '';
+    loadEventsChart();
+  });
 
-  const compRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  // Check-Ins over time filters (client-side from activities array)
+  document.getElementById('applyCheckinsFilter').addEventListener('click', () => renderCheckinsChart());
+  document.getElementById('clearCheckinsFilter').addEventListener('click', () => {
+    document.getElementById('checkinsAfter').value = '';
+    document.getElementById('checkinsBefore').value = '';
+    renderCheckinsChart();
+  });
 
-  // Animate counters
-  animateCountValue(valTotal, totalCount);
-  animateCountValue(valCompleted, completedCount);
-  animateCountValue(valPending, pendingCount);
-  animateCountValue(valOverdue, overdueCount);
-  pctCompleted.textContent = `${compRate}% completion rate`;
-
-  // Process data for charts
-  renderTimelineChart();
-  renderDistributionCharts();
+  // Staff bar chart filters (client-side from activities array)
+  document.getElementById('applyStaffFilter').addEventListener('click', () => renderStaffChart());
+  document.getElementById('clearStaffFilter').addEventListener('click', () => {
+    document.getElementById('staffAfter').value = '';
+    document.getElementById('staffBefore').value = '';
+    renderStaffChart();
+  });
 }
 
-// Counter animation
-function animateCountValue(element, target) {
-  let start = 0;
-  const duration = 800; // ms
-  if (target === 0) {
-    element.textContent = '0';
-    return;
+// ─── Load All Charts ────────────────────────────────────────────────────────
+function loadCharts() {
+  loadEventsChart();
+  // Check-ins and staff charts render from activities data once loaded
+}
+
+// ─── Chart 1: Event Attendance Bar Chart ────────────────────────────────────
+async function loadEventsChart() {
+  const after = document.getElementById('eventsAfter').value;
+  const before = document.getElementById('eventsBefore').value;
+
+  const container = document.getElementById('eventsChart').parentElement;
+  container.innerHTML = '<div class="chart-loading">⏳ Loading event data...</div>';
+
+  let url = '/api/events';
+  const params = new URLSearchParams();
+  if (after) params.set('after', after);
+  if (before) params.set('before', before);
+  if (params.toString()) url += '?' + params.toString();
+
+  console.log(`🎟️ [Events Chart] Fetching: ${url}`);
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to load events.');
+
+    const events = (data.events || []).sort((a, b) => new Date(a['Event Date']) - new Date(b['Event Date']));
+    console.log(`🎟️ [Events Chart] Rendering ${events.length} events.`);
+
+    // Rebuild canvas (destroyed charts leave ghost state)
+    container.innerHTML = '<canvas id="eventsChart"></canvas>';
+    const ctx = document.getElementById('eventsChart').getContext('2d');
+
+    if (eventsChartInstance) eventsChartInstance.destroy();
+
+    const isDark = !document.body.classList.contains('light-theme');
+    const textColor = isDark ? '#a0aec0' : '#334155';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+
+    eventsChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: events.map(e => {
+          const name = e['Event Name'];
+          return name.length > 28 ? name.substring(0, 26) + '…' : name;
+        }),
+        datasets: [{
+          label: 'Registrants',
+          data: events.map(e => e['Registrants']),
+          backgroundColor: 'rgba(0, 242, 254, 0.7)',
+          borderColor: 'rgba(0, 242, 254, 1)',
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: 'rgba(0, 242, 254, 0.9)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => {
+                const idx = items[0].dataIndex;
+                return events[idx]['Event Name'];
+              },
+              label: (item) => {
+                const ev = events[item.dataIndex];
+                return [
+                  `Registrants: ${ev['Registrants']}`,
+                  `Date: ${ev['Event Date']}`,
+                  ev['Category'] ? `Category: ${ev['Category']}` : ''
+                ].filter(Boolean);
+              }
+            },
+            backgroundColor: 'rgba(12,9,25,0.95)',
+            titleColor: '#00f2fe',
+            bodyColor: '#a0aec0',
+            borderColor: 'rgba(0,242,254,0.2)',
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
+            grid: { color: gridColor }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
+            grid: { color: gridColor }
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.error('❌ [Events Chart] Error:', err);
+    container.innerHTML = `<div class="chart-loading" style="color:var(--danger)">⚠️ ${err.message}</div>`;
   }
-  const startTime = performance.now();
-  
-  function update(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Ease out quad
-    const easeProgress = progress * (2 - progress);
-    const current = Math.floor(easeProgress * target);
-    
-    element.textContent = current.toString();
-    
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    } else {
-      element.textContent = target.toString();
+}
+
+// ─── Chart 2: Check-Ins Over Time Line Chart ─────────────────────────────────
+function renderCheckinsChart() {
+  const after = document.getElementById('checkinsAfter').value;
+  const before = document.getElementById('checkinsBefore').value;
+
+  // Filter activities to only Check-In subject
+  let checkins = activities.filter(a =>
+    (a['Activity Subject'] || '').toLowerCase().includes('check-in') ||
+    (a['Activity Type'] || '').toLowerCase().includes('check-in')
+  );
+
+  if (after) checkins = checkins.filter(a => a['Activity Date'] >= after);
+  if (before) checkins = checkins.filter(a => a['Activity Date'] <= before);
+
+  console.log(`📍 [Check-Ins Chart] Rendering ${checkins.length} check-in activities.`);
+
+  // Group by date
+  const counts = {};
+  checkins.forEach(a => {
+    const date = a['Activity Date'];
+    if (date) counts[date] = (counts[date] || 0) + 1;
+  });
+
+  const sortedDates = Object.keys(counts).sort();
+
+  const container = document.getElementById('checkinsChart').parentElement;
+  container.innerHTML = '<canvas id="checkinsChart"></canvas>';
+  const ctx = document.getElementById('checkinsChart').getContext('2d');
+
+  if (checkinsChartInstance) checkinsChartInstance.destroy();
+
+  const isDark = !document.body.classList.contains('light-theme');
+  const textColor = isDark ? '#a0aec0' : '#334155';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+
+  checkinsChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sortedDates,
+      datasets: [{
+        label: 'Check-Ins',
+        data: sortedDates.map(d => counts[d]),
+        borderColor: '#ff007f',
+        backgroundColor: 'rgba(255, 0, 127, 0.12)',
+        pointBackgroundColor: '#ff007f',
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(12,9,25,0.95)',
+          titleColor: '#ff007f',
+          bodyColor: '#a0aec0',
+          borderColor: 'rgba(255,0,127,0.2)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
+          grid: { color: gridColor }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
+          grid: { color: gridColor }
+        }
+      }
     }
-  }
-  
-  requestAnimationFrame(update);
+  });
+}
+
+// ─── Chart 3: Activities by Staff Bar Chart ──────────────────────────────────
+function renderStaffChart() {
+  const after = document.getElementById('staffAfter').value;
+  const before = document.getElementById('staffBefore').value;
+
+  let data = [...activities];
+  if (after) data = data.filter(a => a['Activity Date'] >= after);
+  if (before) data = data.filter(a => a['Activity Date'] <= before);
+
+  // Group by system user
+  const counts = {};
+  data.forEach(a => {
+    const user = (a['Created By'] || 'Unassigned').trim();
+    counts[user] = (counts[user] || 0) + 1;
+  });
+
+  // Sort descending by count
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(([name]) => name);
+  const values = sorted.map(([, count]) => count);
+
+  console.log(`👥 [Staff Chart] Rendering ${labels.length} staff members.`);
+
+  // Gradient colors per bar
+  const palette = [
+    'rgba(0, 242, 254, 0.75)',
+    'rgba(157, 78, 221, 0.75)',
+    'rgba(255, 0, 127, 0.75)',
+    'rgba(59, 130, 246, 0.75)',
+    'rgba(16, 185, 129, 0.75)',
+    'rgba(245, 158, 11, 0.75)',
+    'rgba(239, 68, 68, 0.75)',
+    'rgba(99, 102, 241, 0.75)'
+  ];
+
+  const container = document.getElementById('staffChart').parentElement;
+  container.innerHTML = '<canvas id="staffChart"></canvas>';
+  const ctx = document.getElementById('staffChart').getContext('2d');
+
+  if (staffChartInstance) staffChartInstance.destroy();
+
+  const isDark = !document.body.classList.contains('light-theme');
+  const textColor = isDark ? '#a0aec0' : '#334155';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+
+  staffChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Activities',
+        data: values,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+        borderColor: labels.map((_, i) => palette[i % palette.length].replace('0.75', '1')),
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(12,9,25,0.95)',
+          titleColor: '#00f2fe',
+          bodyColor: '#a0aec0',
+          borderColor: 'rgba(0,242,254,0.2)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
+          grid: { color: gridColor }
+        },
+        y: {
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
+          grid: { color: gridColor }
+        }
+      }
+    }
+  });
 }
 
 // Filter, sort, and paginate the local dataset
@@ -562,15 +798,9 @@ async function handleNeonConfigSubmit(e) {
     neonApiUrl: formData.get('neonApiUrl')
   };
 
-  // Only send password/API keys if updated
+  // Only send API key if filled in
   const apikey = formData.get('neonApiKey');
-  if (apikey) {
-    payload.neonApiKey = apikey;
-  }
-  const geminiKey = formData.get('geminiApiKey');
-  if (geminiKey) {
-    payload.geminiApiKey = geminiKey;
-  }
+  if (apikey) payload.neonApiKey = apikey;
 
   try {
     const res = await fetch('/api/config', {
@@ -584,6 +814,7 @@ async function handleNeonConfigSubmit(e) {
     showToast('Neon CRM settings updated. Testing connection...', 'info');
     await checkAppStatus();
     loadData();
+    loadCharts();
   } catch (err) {
     showToast(err.message, 'error');
   }

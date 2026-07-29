@@ -241,6 +241,92 @@ app.post('/api/config', (req, res) => {
   }
 });
 
+// API: Fetch Events with Attendee Counts
+app.get('/api/events', async (req, res) => {
+  if (!process.env.NEON_ORG_ID || !process.env.NEON_API_KEY) {
+    return res.status(503).json({ success: false, message: 'Neon CRM API not configured.' });
+  }
+
+  try {
+    const auth = Buffer.from(`${process.env.NEON_ORG_ID}:${process.env.NEON_API_KEY}`).toString('base64');
+    const apiBase = process.env.NEON_API_URL || 'https://api.neoncrm.com/v2';
+
+    const searchFields = [];
+    if (req.query.after) {
+      searchFields.push({ field: 'Event Start Date', operator: 'GREATER_AND_EQUAL', value: req.query.after });
+    }
+    if (req.query.before) {
+      searchFields.push({ field: 'Event Start Date', operator: 'LESS_AND_EQUAL', value: req.query.before });
+    }
+    if (searchFields.length === 0) {
+      searchFields.push({ field: 'Event Start Date', operator: 'GREATER_THAN', value: '1970-01-01' });
+    }
+
+    let currentPage = 0;
+    let totalPages = 1;
+    let rawResults = [];
+
+    while (currentPage < totalPages) {
+      const response = await fetch(`${apiBase}/events/search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'NEON-API-VERSION': '2.11',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          searchFields,
+          outputFields: [
+            'Event ID',
+            'Event Name',
+            'Event Start Date',
+            'Event End Date',
+            'Event Capacity',
+            'Event Category Name',
+            'Event Registration Attendee Count',
+            'Registrants',
+            'Marked Attended'
+          ],
+          pagination: {
+            currentPage,
+            pageSize: 200,
+            sortColumn: 'Event Start Date',
+            sortDirection: 'DESC'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Neon API Error: HTTP ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      rawResults = rawResults.concat(data.searchResults || []);
+      totalPages = data.pagination ? data.pagination.totalPages : 1;
+      currentPage++;
+      if (currentPage >= 10) break;
+    }
+
+    const events = rawResults.map(item => ({
+      'Event ID': item['Event ID'] || '',
+      'Event Name': item['Event Name'] || 'Untitled Event',
+      'Event Date': item['Event Start Date'] || '',
+      'Event End Date': item['Event End Date'] || '',
+      'Category': item['Event Category Name'] || '',
+      'Capacity': item['Event Capacity'] ? parseInt(item['Event Capacity']) : null,
+      'Registrants': parseInt(item['Registrants'] || item['Event Registration Attendee Count'] || '0', 10),
+      'Attended': parseInt(item['Marked Attended'] || '0', 10)
+    }));
+
+    console.log(`✅ [Events API] Fetched ${events.length} events.`);
+    res.json({ success: true, events });
+  } catch (err) {
+    console.error('❌ [Events API] Error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // API: Fetch Activities (Real or Mock)
 app.get('/api/activities', async (req, res) => {
   const isMock = req.query.mock === 'true' || !process.env.NEON_ORG_ID || !process.env.NEON_API_KEY;

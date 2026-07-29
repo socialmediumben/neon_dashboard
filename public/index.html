@@ -61,73 +61,64 @@
       </div>
     </header>
 
-    <!-- KPI Panels Row -->
-    <section class="kpi-section" aria-label="Key Performance Indicators">
-      <div class="kpi-card" id="kpi-total">
-        <div class="kpi-glow"></div>
-        <div class="kpi-content">
-          <span class="kpi-title">Total Logged</span>
-          <h2 class="kpi-value" id="val-total">0</h2>
-          <span class="kpi-meta">All-time activities</span>
-        </div>
-        <div class="kpi-icon">📋</div>
-      </div>
+    <!-- Analytics Charts Section -->
+    <section class="charts-grid" aria-label="Analytics Dashboards">
 
-      <div class="kpi-card" id="kpi-completed">
-        <div class="kpi-glow"></div>
-        <div class="kpi-content">
-          <span class="kpi-title">Completed</span>
-          <h2 class="kpi-value" id="val-completed">0</h2>
-          <span class="kpi-meta" id="pct-completed">0% completion rate</span>
-        </div>
-        <div class="kpi-icon">✅</div>
-      </div>
-
-      <div class="kpi-card" id="kpi-pending">
-        <div class="kpi-glow"></div>
-        <div class="kpi-content">
-          <span class="kpi-title">Pending</span>
-          <h2 class="kpi-value" id="val-pending">0</h2>
-          <span class="kpi-meta">Active tasks & follow-ups</span>
-        </div>
-        <div class="kpi-icon">⏳</div>
-      </div>
-
-      <div class="kpi-card" id="kpi-overdue">
-        <div class="kpi-glow"></div>
-        <div class="kpi-content">
-          <span class="kpi-title">Overdue</span>
-          <h2 class="kpi-value" id="val-overdue">0</h2>
-          <span class="kpi-meta" style="color: var(--neon-pink)">Requires immediate action</span>
-        </div>
-        <div class="kpi-icon">🚨</div>
-      </div>
-    </section>
-
-    <!-- Charts Section -->
-    <section class="charts-grid" aria-label="Data Visualizations">
-      <!-- Activity Timeline Chart -->
+      <!-- Chart 1: Event Attendance Bar Chart -->
       <div class="chart-panel card-glow">
-        <h3 class="panel-title">Activity Frequency & Volume</h3>
-        <div class="chart-container">
-          <canvas id="timelineChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Activity Breakdowns (Priority/Type) -->
-      <div class="chart-panel card-glow">
-        <h3 class="panel-title">Priority & Status Distribution</h3>
-        <div class="chart-container-split">
-          <div class="split-chart">
-            <canvas id="priorityChart"></canvas>
-          </div>
-          <div class="split-chart">
-            <canvas id="statusChart"></canvas>
+        <div class="chart-panel-header">
+          <h3 class="panel-title">🎟️ Event Attendance</h3>
+          <div class="chart-date-filters">
+            <label for="eventsAfter">From</label>
+            <input type="date" id="eventsAfter" class="date-input">
+            <label for="eventsBefore">To</label>
+            <input type="date" id="eventsBefore" class="date-input">
+            <button id="applyEventsFilter" class="btn btn-filter">Apply</button>
+            <button id="clearEventsFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
+        <div class="chart-container-tall">
+          <canvas id="eventsChart"></canvas>
+        </div>
       </div>
-    </section>
 
+      <!-- Chart 2: Check-Ins Over Time Line Chart -->
+      <div class="chart-panel card-glow">
+        <div class="chart-panel-header">
+          <h3 class="panel-title">📍 Check-Ins Over Time</h3>
+          <div class="chart-date-filters">
+            <label for="checkinsAfter">From</label>
+            <input type="date" id="checkinsAfter" class="date-input">
+            <label for="checkinsBefore">To</label>
+            <input type="date" id="checkinsBefore" class="date-input">
+            <button id="applyCheckinsFilter" class="btn btn-filter">Apply</button>
+            <button id="clearCheckinsFilter" class="btn btn-filter-clear">All Time</button>
+          </div>
+        </div>
+        <div class="chart-container-tall">
+          <canvas id="checkinsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Activities by Staff Bar Chart -->
+      <div class="chart-panel card-glow">
+        <div class="chart-panel-header">
+          <h3 class="panel-title">👥 Activities by Staff Member</h3>
+          <div class="chart-date-filters">
+            <label for="staffAfter">From</label>
+            <input type="date" id="staffAfter" class="date-input">
+            <label for="staffBefore">To</label>
+            <input type="date" id="staffBefore" class="date-input">
+            <button id="applyStaffFilter" class="btn btn-filter">Apply</button>
+            <button id="clearStaffFilter" class="btn btn-filter-clear">All Time</button>
+          </div>
+        </div>
+        <div class="chart-container-tall">
+          <canvas id="staffChart"></canvas>
+        </div>
+      </div>
+
+    </section>
 
 
     <!-- Activity Data Explorer -->
