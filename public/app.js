@@ -51,7 +51,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.0.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.1.0] App initializing...');
   setupTheme();
   setupInfoModal();
   setupTabs();
@@ -294,13 +294,165 @@ async function loadData() {
   }
 }
 
+// ─── Relative Date Calculation Helper ──────────────────────────────────────
+function getRelativeDateRange(preset) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const date = now.getDate();
+
+  const formatDate = (d) => {
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  let startDate, endDate;
+
+  switch (preset) {
+    case 'today':
+      startDate = new Date(year, month, date);
+      endDate = new Date(year, month, date);
+      break;
+
+    case 'yesterday':
+      startDate = new Date(year, month, date - 1);
+      endDate = new Date(year, month, date - 1);
+      break;
+
+    case 'tomorrow':
+      startDate = new Date(year, month, date + 1);
+      endDate = new Date(year, month, date + 1);
+      break;
+
+    case 'this_week': {
+      const day = now.getDay();
+      const diffToMon = date - day + (day === 0 ? -6 : 1);
+      startDate = new Date(year, month, diffToMon);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    }
+
+    case 'last_week': {
+      const day = now.getDay();
+      const diffToMon = date - day + (day === 0 ? -6 : 1) - 7;
+      startDate = new Date(year, month, diffToMon);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    }
+
+    case 'next_week': {
+      const day = now.getDay();
+      const diffToMon = date - day + (day === 0 ? -6 : 1) + 7;
+      startDate = new Date(year, month, diffToMon);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    }
+
+    case 'this_month':
+      startDate = new Date(year, month, 1);
+      endDate = new Date(year, month + 1, 0);
+      break;
+
+    case 'last_month':
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0);
+      break;
+
+    case 'next_month':
+      startDate = new Date(year, month + 1, 1);
+      endDate = new Date(year, month + 2, 0);
+      break;
+
+    case 'this_quarter': {
+      const q = Math.floor(month / 3);
+      startDate = new Date(year, q * 3, 1);
+      endDate = new Date(year, q * 3 + 3, 0);
+      break;
+    }
+
+    case 'last_quarter': {
+      const q = Math.floor(month / 3);
+      startDate = new Date(year, (q - 1) * 3, 1);
+      endDate = new Date(year, (q - 1) * 3 + 3, 0);
+      break;
+    }
+
+    case 'next_quarter': {
+      const q = Math.floor(month / 3);
+      startDate = new Date(year, (q + 1) * 3, 1);
+      endDate = new Date(year, (q + 1) * 3 + 3, 0);
+      break;
+    }
+
+    case 'this_year':
+      startDate = new Date(year, 0, 1);
+      endDate = new Date(year, 11, 31);
+      break;
+
+    case 'last_year':
+      startDate = new Date(year - 1, 0, 1);
+      endDate = new Date(year - 1, 11, 31);
+      break;
+
+    case 'next_year':
+      startDate = new Date(year + 1, 0, 1);
+      endDate = new Date(year + 1, 11, 31);
+      break;
+
+    default:
+      return { after: '', before: '' };
+  }
+
+  return {
+    after: formatDate(startDate),
+    before: formatDate(endDate)
+  };
+}
+
+function bindPresetAndInputs(presetId, afterId, beforeId, onApply) {
+  const presetEl = document.getElementById(presetId);
+  const afterEl = document.getElementById(afterId);
+  const beforeEl = document.getElementById(beforeId);
+
+  if (presetEl) {
+    presetEl.addEventListener('change', () => {
+      const val = presetEl.value;
+      if (val !== 'custom') {
+        const { after, before } = getRelativeDateRange(val);
+        if (afterEl) afterEl.value = after;
+        if (beforeEl) beforeEl.value = before;
+      }
+      onApply();
+    });
+  }
+
+  const setCustom = () => {
+    if (presetEl) presetEl.value = 'custom';
+  };
+
+  if (afterEl) afterEl.addEventListener('change', setCustom);
+  if (beforeEl) beforeEl.addEventListener('change', setCustom);
+}
+
 // ─── Chart Filter Controls Setup ───────────────────────────────────────────
 function setupChartFilters() {
+  bindPresetAndInputs('eventsPreset', 'eventsAfter', 'eventsBefore', () => loadEventsChart());
+  bindPresetAndInputs('checkinsPreset', 'checkinsAfter', 'checkinsBefore', () => renderCheckinsChart());
+  bindPresetAndInputs('staffPreset', 'staffAfter', 'staffBefore', () => renderStaffChart());
+
   // Events Attendance chart filters
   document.getElementById('applyEventsFilter').addEventListener('click', () => loadEventsChart());
   document.getElementById('clearEventsFilter').addEventListener('click', () => {
     document.getElementById('eventsAfter').value = '';
     document.getElementById('eventsBefore').value = '';
+    const preset = document.getElementById('eventsPreset');
+    if (preset) preset.value = 'custom';
     loadEventsChart();
   });
 
@@ -309,6 +461,8 @@ function setupChartFilters() {
   document.getElementById('clearCheckinsFilter').addEventListener('click', () => {
     document.getElementById('checkinsAfter').value = '';
     document.getElementById('checkinsBefore').value = '';
+    const preset = document.getElementById('checkinsPreset');
+    if (preset) preset.value = 'custom';
     renderCheckinsChart();
   });
 
@@ -317,6 +471,8 @@ function setupChartFilters() {
   document.getElementById('clearStaffFilter').addEventListener('click', () => {
     document.getElementById('staffAfter').value = '';
     document.getElementById('staffBefore').value = '';
+    const preset = document.getElementById('staffPreset');
+    if (preset) preset.value = 'custom';
     renderStaffChart();
   });
 }
@@ -504,6 +660,87 @@ function renderCheckinsChart() {
   });
 }
 
+// ─── Staff Filter & Multi-Staff Attribution Helpers ─────────────────────────
+let disabledStaffSet = new Set(JSON.parse(localStorage.getItem('neon_disabled_staff') || '[]'));
+
+function saveDisabledStaff() {
+  localStorage.setItem('neon_disabled_staff', JSON.stringify([...disabledStaffSet]));
+}
+
+function extractStaffNames(createdByStr) {
+  if (!createdByStr || !createdByStr.trim()) return ['Unassigned'];
+  const parts = createdByStr.split(/[,;&]+/).map(s => s.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : ['Unassigned'];
+}
+
+function updateStaffFilterUI(allStaffMap) {
+  const container = document.getElementById('staffFilterBar');
+  if (!container) return;
+
+  const staffNames = Object.keys(allStaffMap).sort();
+  if (staffNames.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = `
+    <span class="staff-filter-label">Filter Staff:</span>
+    <div class="staff-filter-actions">
+      <button type="button" class="btn-staff-action" id="selectAllStaff">Select All</button>
+      <button type="button" class="btn-staff-action" id="deselectAllStaff">Deselect All</button>
+    </div>
+    <div class="staff-checkbox-list">
+  `;
+
+  staffNames.forEach(name => {
+    const isChecked = !disabledStaffSet.has(name);
+    const count = allStaffMap[name];
+    html += `
+      <label class="staff-checkbox-item">
+        <input type="checkbox" data-staff="${encodeURIComponent(name)}" ${isChecked ? 'checked' : ''}>
+        <span>${name} (${count})</span>
+      </label>
+    `;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Event Listeners for checkboxes
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const staffName = decodeURIComponent(e.target.dataset.staff);
+      if (e.target.checked) {
+        disabledStaffSet.delete(staffName);
+      } else {
+        disabledStaffSet.add(staffName);
+      }
+      saveDisabledStaff();
+      renderStaffChart();
+    });
+  });
+
+  const selectAllBtn = document.getElementById('selectAllStaff');
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', () => {
+      disabledStaffSet.clear();
+      saveDisabledStaff();
+      updateStaffFilterUI(allStaffMap);
+      renderStaffChart();
+    });
+  }
+
+  const deselectAllBtn = document.getElementById('deselectAllStaff');
+  if (deselectAllBtn) {
+    deselectAllBtn.addEventListener('click', () => {
+      staffNames.forEach(name => disabledStaffSet.add(name));
+      saveDisabledStaff();
+      updateStaffFilterUI(allStaffMap);
+      renderStaffChart();
+    });
+  }
+}
+
 // ─── Chart 3: Activities by Staff Bar Chart ──────────────────────────────────
 function renderStaffChart() {
   const after = document.getElementById('staffAfter').value;
@@ -513,19 +750,27 @@ function renderStaffChart() {
   if (after) data = data.filter(a => a['Activity Date'] >= after);
   if (before) data = data.filter(a => a['Activity Date'] <= before);
 
-  // Group by system user
-  const counts = {};
+  // Group by system user - splitting multiple staff members
+  const allStaffMap = {};
   data.forEach(a => {
-    const user = (a['Created By'] || 'Unassigned').trim();
-    counts[user] = (counts[user] || 0) + 1;
+    const staffList = extractStaffNames(a['Created By']);
+    staffList.forEach(user => {
+      allStaffMap[user] = (allStaffMap[user] || 0) + 1;
+    });
   });
 
-  // Sort descending by count
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const labels = sorted.map(([name]) => name);
-  const values = sorted.map(([, count]) => count);
+  // Render/Update the staff filter checkboxes
+  updateStaffFilterUI(allStaffMap);
 
-  console.log(`👥 [Staff Chart] Rendering ${labels.length} staff members.`);
+  // Filter out staff members that are disabled via checkbox
+  const filteredStaffEntries = Object.entries(allStaffMap)
+    .filter(([name]) => !disabledStaffSet.has(name))
+    .sort((a, b) => b[1] - a[1]);
+
+  const labels = filteredStaffEntries.map(([name]) => name);
+  const values = filteredStaffEntries.map(([, count]) => count);
+
+  console.log(`👥 [Staff Chart] Rendering ${labels.length} staff members (Filtered from ${Object.keys(allStaffMap).length} total).`);
 
   // Gradient colors per bar
   const palette = [

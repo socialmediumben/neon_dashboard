@@ -69,6 +69,24 @@
         <div class="chart-panel-header">
           <h3 class="panel-title">🎟️ Event Attendance</h3>
           <div class="chart-date-filters">
+            <select id="eventsPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
+              <option value="custom">Custom Range</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="this_week">This Week</option>
+              <option value="last_week">Last Week</option>
+              <option value="next_week">Next Week</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="next_month">Next Month</option>
+              <option value="this_quarter">This Quarter</option>
+              <option value="last_quarter">Last Quarter</option>
+              <option value="next_quarter">Next Quarter</option>
+              <option value="this_year">This Year</option>
+              <option value="last_year">Last Year</option>
+              <option value="next_year">Next Year</option>
+            </select>
             <label for="eventsAfter">From</label>
             <input type="date" id="eventsAfter" class="date-input">
             <label for="eventsBefore">To</label>
@@ -87,6 +105,24 @@
         <div class="chart-panel-header">
           <h3 class="panel-title">📍 Check-Ins Over Time</h3>
           <div class="chart-date-filters">
+            <select id="checkinsPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
+              <option value="custom">Custom Range</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="this_week">This Week</option>
+              <option value="last_week">Last Week</option>
+              <option value="next_week">Next Week</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="next_month">Next Month</option>
+              <option value="this_quarter">This Quarter</option>
+              <option value="last_quarter">Last Quarter</option>
+              <option value="next_quarter">Next Quarter</option>
+              <option value="this_year">This Year</option>
+              <option value="last_year">Last Year</option>
+              <option value="next_year">Next Year</option>
+            </select>
             <label for="checkinsAfter">From</label>
             <input type="date" id="checkinsAfter" class="date-input">
             <label for="checkinsBefore">To</label>
@@ -105,6 +141,24 @@
         <div class="chart-panel-header">
           <h3 class="panel-title">👥 Activities by Staff Member</h3>
           <div class="chart-date-filters">
+            <select id="staffPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
+              <option value="custom">Custom Range</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="this_week">This Week</option>
+              <option value="last_week">Last Week</option>
+              <option value="next_week">Next Week</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="next_month">Next Month</option>
+              <option value="this_quarter">This Quarter</option>
+              <option value="last_quarter">Last Quarter</option>
+              <option value="next_quarter">Next Quarter</option>
+              <option value="this_year">This Year</option>
+              <option value="last_year">Last Year</option>
+              <option value="next_year">Next Year</option>
+            </select>
             <label for="staffAfter">From</label>
             <input type="date" id="staffAfter" class="date-input">
             <label for="staffBefore">To</label>
@@ -113,6 +167,8 @@
             <button id="clearStaffFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
+        <!-- Per-Staff Selection Checkboxes -->
+        <div id="staffFilterBar" class="staff-filter-bar"></div>
         <div class="chart-container-tall">
           <canvas id="staffChart"></canvas>
         </div>
@@ -346,7 +402,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Activities Intelligence</h4>
-          <span class="version-badge">v1.0.0</span>
+          <span class="version-badge">v1.1.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -361,6 +417,18 @@
           <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
           <div class="changelog-item">
+            <div class="changelog-version">
+              <span class="version-tag">v1.1.0</span>
+              <span class="release-date">July 2026</span>
+            </div>
+            <ul class="changelog-list">
+              <li>🗓️ Added relative time date selectors (Today, Week, Month, Quarter, Year presets).</li>
+              <li>👥 Multi-staff attribution splitting for activities with multiple assigned members.</li>
+              <li>☑️ Interactive per-staff member inclusion/exclusion checkboxes with local storage persistence.</li>
+            </ul>
+          </div>
+
+          <div class="changelog-item" style="margin-top: 1.25rem;">
             <div class="changelog-version">
               <span class="version-tag">v1.0.0</span>
               <span class="release-date">July 2026</span>

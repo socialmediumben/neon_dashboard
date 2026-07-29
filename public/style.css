@@ -355,6 +355,95 @@ input:checked + .slider:before {
   color-scheme: dark;
 }
 
+.date-preset-select {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  border-radius: 7px;
+  background: var(--bg-obsidian);
+  color: var(--neon-cyan);
+  border: 1px solid var(--border-glass);
+}
+
+/* Staff Selection Filter Bar */
+.staff-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.85rem;
+  background: rgba(12, 9, 25, 0.5);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.staff-filter-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.staff-filter-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.btn-staff-action {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-staff-action:hover {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
+.staff-checkbox-list {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.staff-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-obsidian);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  transition: var(--transition-fast);
+}
+
+.staff-checkbox-item:hover {
+  border-color: var(--neon-cyan);
+}
+
+.staff-checkbox-item input[type="checkbox"] {
+  accent-color: var(--neon-cyan);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
 .date-input:focus {
   border-color: var(--neon-cyan);
   box-shadow: 0 0 8px rgba(0, 242, 254, 0.12);
@@ -1055,9 +1144,27 @@ body.light-theme .card-glow {
 
 body.light-theme .report-select,
 body.light-theme .filter-select,
+body.light-theme .date-preset-select,
 body.light-theme .search-box input {
   background-color: #ffffff;
   color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+body.light-theme .staff-filter-bar {
+  background: rgba(241, 245, 249, 0.6);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .staff-checkbox-item {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+body.light-theme .btn-staff-action {
+  background: #ffffff;
+  color: #334155;
   border-color: #cbd5e1;
 }
 
