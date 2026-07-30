@@ -95,6 +95,12 @@
         <button id="applyGlobalFilter" class="btn btn-filter" title="Apply date range to all 4 charts">Apply All</button>
         <button id="clearGlobalFilter" class="btn btn-filter-clear" title="Reset date range for all charts">All Time</button>
       </div>
+
+      <div class="toolbar-actions">
+        <button id="refreshDataBtn" class="btn btn-primary btn-header-action" title="Fetch fresh data from Neon CRM API">
+          <span>🔄</span> Refresh Data
+        </button>
+      </div>
     </div>
 
     <!-- Analytics Charts Section -->
@@ -170,6 +176,13 @@
         <div class="chart-container-tall">
           <canvas id="checkinsChart"></canvas>
         </div>
+        <!-- Day of Week Breakdown Sub-panel -->
+        <div class="subpanel-container">
+          <h4 class="subpanel-title">📅 Check-Ins by Day of Week</h4>
+          <div class="chart-container-short">
+            <canvas id="checkinsDowChart"></canvas>
+          </div>
+        </div>
       </div>
 
       <!-- Chart 3: Activities by Staff Bar Chart -->
@@ -241,6 +254,8 @@
             <button id="clearClubCheckinsFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
+        <!-- Per-Club Selection Checkboxes -->
+        <div id="clubFilterBar" class="staff-filter-bar"></div>
         <div class="chart-container-tall">
           <canvas id="clubCheckinsChart"></canvas>
         </div>
@@ -377,7 +392,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.5.0</span>
+          <span class="version-badge">v1.6.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -402,6 +417,20 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.6.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🔄 Live API Data Refresh button (re-fetches CRM data without page reload).</li>
+                <li>📅 Check-Ins by Day of Week breakdown chart (Mon-Sun distribution).</li>
+                <li>♣️ Per-Club dashed average lines & solid Black/White Overall Average Line.</li>
+                <li>☑️ Per-Club interactive inclusion/exclusion filter checkboxes with local storage persistence.</li>
+                <li>📌 Dual Save/Load Configuration options (Browser App Storage vs. Shared JSON Export/Import).</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.5.0</span>
                 <span class="release-date">July 2026</span>
@@ -588,6 +617,41 @@
       </div>
       <div class="modal-body info-modal-body">
         <div id="helpModalContent" class="help-modal-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dual Save/Load Configuration Modal -->
+  <div id="configChoiceModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card info-modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h4 id="configChoiceTitle">Configuration Settings</h4>
+        <button id="closeConfigChoiceBtn" class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <div id="saveOptions" class="config-choice-group hidden">
+          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Choose how you would like to save your report configuration:</p>
+          <button id="saveToAppBtn" class="btn btn-primary config-option-btn" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">
+            📌 Save to App (Browser Storage)
+          </button>
+          <span class="form-hint" style="display: block; margin-bottom: 1.25rem;">Saves configuration directly in your browser for instant 1-click loading.</span>
+          <button id="saveToJsonBtn" class="btn btn-secondary config-option-btn" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">
+            📄 Export as JSON File
+          </button>
+          <span class="form-hint" style="display: block;">Downloads a JSON file to share report settings with coworkers.</span>
+        </div>
+
+        <div id="loadOptions" class="config-choice-group hidden">
+          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Choose how you would like to load a report configuration:</p>
+          <button id="loadFromAppBtn" class="btn btn-primary config-option-btn" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">
+            📌 Load from App (Browser Storage)
+          </button>
+          <span class="form-hint" style="display: block; margin-bottom: 1.25rem;">Restores your previously saved app configuration instantly.</span>
+          <button id="loadFromJsonBtn" class="btn btn-secondary config-option-btn" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">
+            📄 Upload JSON File
+          </button>
+          <span class="form-hint" style="display: block;">Loads configuration settings from a shared JSON file.</span>
+        </div>
       </div>
     </div>
   </div>
