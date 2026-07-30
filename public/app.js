@@ -71,7 +71,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.1] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.2] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -1629,7 +1629,6 @@ function renderClubCheckinsChart() {
 
   if (clubCheckinsChartInstance) clubCheckinsChartInstance.destroy();
 
-  const isDark = !document.body.classList.contains('light-theme');
   const textColor = isDark ? '#a0aec0' : '#334155';
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 
