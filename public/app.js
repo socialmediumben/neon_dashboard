@@ -12,6 +12,24 @@ let checkinsChartInstance = null;
 let staffChartInstance = null;
 let clubCheckinsChartInstance = null;
 
+let disabledStaffSet = new Set();
+let disabledClubsSet = new Set();
+
+function loadDisabledClubs() {
+  const saved = localStorage.getItem('neon_disabled_clubs');
+  if (saved) {
+    try {
+      disabledClubsSet = new Set(JSON.parse(saved));
+    } catch (e) {
+      disabledClubsSet = new Set();
+    }
+  }
+}
+
+function saveDisabledClubs() {
+  localStorage.setItem('neon_disabled_clubs', JSON.stringify(Array.from(disabledClubsSet)));
+}
+
 // DOM Elements
 const themeToggle = document.getElementById('themeToggle');
 const infoBtn = document.getElementById('infoBtn');
@@ -52,7 +70,9 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.5.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.0] App initializing...');
+  loadDisabledStaff();
+  loadDisabledClubs();
   setupTheme();
   setupInfoModal();
   setupSectionHelpModals();
@@ -1253,6 +1273,43 @@ function getWeekStartDate(dateStr) {
   return `${y}-${m}-${dy}`;
 }
 
+// ─── Interactive Club Filter UI Checkboxes ────────────────────────────────────
+function updateClubFilterUI(allClubs) {
+  const container = document.getElementById('clubFilterBar');
+  if (!container) return;
+
+  if (allClubs.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = '<span class="filter-bar-title">Clubs:</span>';
+
+  allClubs.forEach(club => {
+    const isChecked = !disabledClubsSet.has(club);
+    const label = document.createElement('label');
+    label.className = 'staff-checkbox-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = isChecked;
+
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        disabledClubsSet.delete(club);
+      } else {
+        disabledClubsSet.add(club);
+      }
+      saveDisabledClubs();
+      renderClubCheckinsChart();
+    });
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(` ${club}`));
+    container.appendChild(label);
+  });
+}
+
 // ─── Chart 4: Club Check-Ins Weekly Multi-Line Chart ─────────────────────────
 function renderClubCheckinsChart() {
   const after = document.getElementById('clubCheckinsAfter').value;
@@ -1288,6 +1345,11 @@ function renderClubCheckinsChart() {
   const sortedWeekStarts = Array.from(weekStartDatesSet).sort();
   const sortedClubNames = Array.from(clubNamesSet).sort();
 
+  // Render per-club filter checkboxes
+  updateClubFilterUI(sortedClubNames);
+
+  const activeClubNames = sortedClubNames.filter(name => !disabledClubsSet.has(name));
+
   // Format week labels as "Week of M/D"
   const weekLabels = sortedWeekStarts.map(wStr => {
     const parts = wStr.split('-');
@@ -1308,12 +1370,19 @@ function renderClubCheckinsChart() {
     '#6366f1'
   ];
 
-  // Build dataset per club name
-  const datasets = sortedClubNames.map((clubName, i) => {
+  const datasets = [];
+  let totalActiveWeeklyCheckins = 0;
+  const numWeeks = sortedWeekStarts.length || 1;
+
+  activeClubNames.forEach((clubName, i) => {
     const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
+    const clubTotal = data.reduce((sum, v) => sum + v, 0);
+    const clubAvg = clubTotal / numWeeks;
+    totalActiveWeeklyCheckins += clubTotal;
     const color = palette[i % palette.length];
 
-    return {
+    // 1) Main weekly trend line
+    datasets.push({
       label: clubName,
       data,
       borderColor: color,
@@ -1324,10 +1393,38 @@ function renderClubCheckinsChart() {
       fill: false,
       tension: 0.3,
       borderWidth: 2
-    };
+    });
+
+    // 2) Per-Club Average Line (dashed, matching club color)
+    datasets.push({
+      label: `${clubName} Avg (${clubAvg.toFixed(1)}/wk)`,
+      data: sortedWeekStarts.map(() => clubAvg),
+      borderColor: color,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      fill: false,
+      borderWidth: 1.5
+    });
   });
 
-  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} club lines across ${sortedWeekStarts.length} weeks.`);
+  const isDarkTheme = !document.body.classList.contains('light-theme');
+  const overallColor = isDarkTheme ? '#ffffff' : '#0f172a';
+  const overallWeeklyAvg = activeClubNames.length > 0 ? (totalActiveWeeklyCheckins / numWeeks) : 0;
+
+  // 3) Overall Average Line across all active clubs (Black in light mode, White in dark mode)
+  if (activeClubNames.length > 0) {
+    datasets.push({
+      label: `Overall Average (${overallWeeklyAvg.toFixed(1)}/wk)`,
+      data: sortedWeekStarts.map(() => overallWeeklyAvg),
+      borderColor: overallColor,
+      borderWidth: 2.5,
+      borderDash: [8, 4],
+      pointRadius: 0,
+      fill: false
+    });
+  }
+
+  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} datasets for ${activeClubNames.length} active clubs across ${sortedWeekStarts.length} weeks.`);
 
   const container = document.getElementById('clubCheckinsChart').parentElement;
   container.innerHTML = '<canvas id="clubCheckinsChart"></canvas>';
@@ -1335,9 +1432,8 @@ function renderClubCheckinsChart() {
 
   if (clubCheckinsChartInstance) clubCheckinsChartInstance.destroy();
 
-  const isDark = !document.body.classList.contains('light-theme');
-  const textColor = isDark ? '#a0aec0' : '#334155';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+  const textColor = isDarkTheme ? '#a0aec0' : '#334155';
+  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 
   clubCheckinsChartInstance = new Chart(ctx, {
     type: 'line',
@@ -1369,7 +1465,7 @@ function renderClubCheckinsChart() {
       },
       scales: {
         x: {
-          ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
+          ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
           grid: { color: gridColor }
         },
         y: {

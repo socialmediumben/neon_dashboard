@@ -241,6 +241,8 @@
             <button id="clearClubCheckinsFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
+        <!-- Per-Club Selection Checkboxes -->
+        <div id="clubFilterBar" class="staff-filter-bar"></div>
         <div class="chart-container-tall">
           <canvas id="clubCheckinsChart"></canvas>
         </div>
@@ -377,7 +379,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.5.0</span>
+          <span class="version-badge">v1.6.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -402,6 +404,18 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.6.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>♣️ Per-Club dashed average lines matching club colors.</li>
+                <li>📊 Overall Average Line (Black/White) for combined weekly mean check-ins.</li>
+                <li>☑️ Interactive per-club filter checkboxes with local storage persistence.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.5.0</span>
                 <span class="release-date">July 2026</span>
