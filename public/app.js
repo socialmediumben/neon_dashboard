@@ -15,7 +15,6 @@ let clubCheckinsChartInstance = null;
 // DOM Elements
 const themeToggle = document.getElementById('themeToggle');
 const infoBtn = document.getElementById('infoBtn');
-const reportSelector = document.getElementById('reportSelector');
 const connectionStatus = document.getElementById('connectionStatus');
 
 const tableSearch = document.getElementById('tableSearch');
@@ -129,19 +128,13 @@ function setupTabs() {
 
 // Setup Event Listeners
 function setupEventListeners() {
-  // Report Selector Toggle
-  reportSelector.addEventListener('change', () => {
-    showToast(`Loading Report: ${reportSelector.options[reportSelector.selectedIndex].text}`, 'success');
-    loadData();
-  });
-
   // Table Filters & Search (Instant Client-Side Filtering)
-  tableSearch.addEventListener('input', () => { currentPage = 1; filterAndRenderTable(); });
-  filterStatus.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
-  filterPriority.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
+  if (tableSearch) tableSearch.addEventListener('input', () => { currentPage = 1; filterAndRenderTable(); });
+  if (filterStatus) filterStatus.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
+  if (filterPriority) filterPriority.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
   
   // CSV Export
-  exportCsvBtn.addEventListener('click', exportToCsv);
+  if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportToCsv);
 
   // Sorting
   document.querySelectorAll('.interactive-table th.sortable').forEach(th => {
@@ -233,7 +226,8 @@ async function checkAppStatus() {
     document.getElementById('emailRecipient').value = status.config.emailRecipient || '';
     document.getElementById('emailSchedule').value = status.config.emailSchedule || '0 8 * * *';
     document.getElementById('emailEnabled').checked = status.config.emailEnabled;
-    document.getElementById('emailReportType').value = status.config.emailReportType || 'all';
+    const emailReportTypeEl = document.getElementById('emailReportType');
+    if (emailReportTypeEl) emailReportTypeEl.value = status.config.emailReportType || 'all';
 
     // Update connection indicator
     connectionStatus.className = 'connection-status';
