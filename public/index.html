@@ -30,13 +30,44 @@
       </div>
 
       <div class="header-controls">
-        <!-- Report Selector -->
-        <div class="control-group">
-          <label class="switch-label" for="reportSelector">Report View</label>
-          <select id="reportSelector" class="filter-select report-select">
-            <option value="all">All Logged Activities</option>
-            <option value="staff-activity">Staff Activity Report</option>
+        <!-- Global Date Range Controls -->
+        <div class="global-date-filters">
+          <span class="global-filter-label">Global Date:</span>
+          <select id="globalPreset" class="filter-select date-preset-select" aria-label="Global Relative Time Preset">
+            <option value="custom">Custom Range</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="tomorrow">Tomorrow</option>
+            <option value="this_week">This Week</option>
+            <option value="last_week">Last Week</option>
+            <option value="next_week">Next Week</option>
+            <option value="this_month">This Month</option>
+            <option value="last_month">Last Month</option>
+            <option value="next_month">Next Month</option>
+            <option value="this_quarter">This Quarter</option>
+            <option value="last_quarter">Last Quarter</option>
+            <option value="next_quarter">Next Quarter</option>
+            <option value="this_year">This Year</option>
+            <option value="last_year">Last Year</option>
+            <option value="next_year">Next Year</option>
           </select>
+          <input type="date" id="globalAfter" class="date-input" aria-label="Global From Date">
+          <input type="date" id="globalBefore" class="date-input" aria-label="Global To Date">
+          <button id="applyGlobalFilter" class="btn btn-filter" title="Apply date range to all 4 charts">Apply All</button>
+          <button id="clearGlobalFilter" class="btn btn-filter-clear" title="Reset date range for all charts">All Time</button>
+        </div>
+
+        <!-- Report Action Buttons (Print, Email, Save) -->
+        <div class="header-action-btns">
+          <button id="printReportBtn" class="btn btn-secondary btn-header-action" title="Print or save PDF report">
+            <span>🖨️</span> Print
+          </button>
+          <button id="emailDigestBtn" class="btn btn-secondary btn-header-action" title="Send email report digest">
+            <span>📧</span> Email
+          </button>
+          <button id="saveCsvBtn" class="btn btn-secondary btn-header-action" title="Export CSV dataset">
+            <span>💾</span> Save
+          </button>
         </div>
 
         <!-- Light Mode Toggle -->
@@ -55,7 +86,7 @@
         </div>
 
         <!-- System Info & Version Icon -->
-        <button id="infoBtn" class="info-icon-btn" title="System Info & Changelog" aria-label="System Info & Changelog">
+        <button id="infoBtn" class="info-icon-btn" title="System Info & Settings" aria-label="System Info & Settings">
           ⓘ
         </button>
       </div>
@@ -281,109 +312,7 @@
       </div>
     </section>
 
-    <!-- Configuration Panels (Tabs) -->
-    <section class="config-section card-glow" aria-label="Configuration Hub">
-      <div class="tabs-header">
-        <button class="tab-btn active" data-tab="neonConfigTab">🔑 Neon CRM API Config</button>
-        <button class="tab-btn" data-tab="emailConfigTab">📧 Email Reports Setup</button>
-      </div>
-
-      <div class="tabs-content">
-        <!-- Tab 1: Neon API Config -->
-        <div id="neonConfigTab" class="tab-pane active">
-          <form id="neonConfigForm" class="config-form">
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="neonOrgId">Organization ID</label>
-                <input type="text" id="neonOrgId" name="neonOrgId" placeholder="Enter Neon Org ID" required>
-                <span class="form-hint">Your numeric ID found in your Neon CRM account settings.</span>
-              </div>
-              <div class="form-group">
-                <label for="neonApiKey">API Key</label>
-                <input type="password" id="neonApiKey" name="neonApiKey" placeholder="••••••••••••••••••••">
-                <span class="form-hint">API user key generated within Neon CRM settings. Leave blank to retain existing key.</span>
-              </div>
-              <div class="form-group full-width">
-                <label for="neonApiUrl">API Base URL</label>
-                <input type="url" id="neonApiUrl" name="neonApiUrl" value="https://api.neoncrm.com/v2" required>
-                <span class="form-hint">Change only if using a sandbox or test environment.</span>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="submit" id="saveNeonBtn" class="btn btn-primary">Save & Connect Account</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Tab 2: Email Reports Config -->
-        <div id="emailConfigTab" class="tab-pane">
-          <form id="emailConfigForm" class="config-form">
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="smtpHost">SMTP Host Server</label>
-                <input type="text" id="smtpHost" name="smtpHost" placeholder="smtp.gmail.com" required>
-              </div>
-              <div class="form-group">
-                <label for="smtpPort">SMTP Port</label>
-                <input type="number" id="smtpPort" name="smtpPort" value="587" required>
-              </div>
-              <div class="form-group">
-                <label class="checkbox-container" for="smtpSecure">
-                  <input type="checkbox" id="smtpSecure" name="smtpSecure">
-                  <span class="checkbox-checkmark"></span>
-                  Use SSL (Port 465)
-                </label>
-                <span class="form-hint">Check if using SSL; uncheck if using TLS (Port 587).</span>
-              </div>
-              <div class="form-group">
-                <label for="smtpUser">SMTP Username</label>
-                <input type="text" id="smtpUser" name="smtpUser" placeholder="username@gmail.com" required>
-              </div>
-              <div class="form-group">
-                <label for="smtpPass">SMTP Password</label>
-                <input type="password" id="smtpPass" name="smtpPass" placeholder="••••••••••••••••">
-                <span class="form-hint">Enter your email password or App-Specific Password.</span>
-              </div>
-              <div class="form-group">
-                <label for="emailFrom">Sender Name & Address</label>
-                <input type="text" id="emailFrom" name="emailFrom" placeholder='"Neon CRM Dashboard" <noreply@yourdomain.com>' required>
-              </div>
-              <div class="form-group">
-                <label for="emailRecipient">Recipient Email Address</label>
-                <input type="email" id="emailRecipient" name="emailRecipient" placeholder="yourbox@domain.com" required>
-                <span class="form-hint">Address where dashboard summaries should be emailed.</span>
-              </div>
-              <div class="form-group">
-                <label for="emailSchedule">Cron Schedule Expression</label>
-                <input type="text" id="emailSchedule" name="emailSchedule" value="0 8 * * *" required>
-                <span class="form-hint">Default <code>0 8 * * *</code> is daily at 8:00 AM. <code>0 8 * * 1</code> is weekly on Mondays.</span>
-              </div>
-              <div class="form-group">
-                <label for="emailReportType">Report to Dispatch</label>
-                <select id="emailReportType" name="emailReportType" class="filter-select">
-                  <option value="all">All Logged Activities</option>
-                  <option value="staff-activity">Staff Activity Report</option>
-                </select>
-                <span class="form-hint">Select which report view to compile and email.</span>
-              </div>
-              <div class="form-group">
-                <label class="checkbox-container" for="emailEnabled">
-                  <input type="checkbox" id="emailEnabled" name="emailEnabled">
-                  <span class="checkbox-checkmark"></span>
-                  Enable Scheduled Reports
-                </label>
-                <span class="form-hint">Enable automatic background emails matching schedule.</span>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="submit" id="saveEmailBtn" class="btn btn-primary">Save Email Settings</button>
-              <button type="button" id="sendTestEmailBtn" class="btn btn-secondary">⚡ Send Test Email Now</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </section>
-
+    <!-- End Activity Data Explorer -->
   </div>
 
   <!-- Detail Modal -->
@@ -432,75 +361,186 @@
     </div>
   </div>
 
-  <!-- Info & Version Changelog Modal -->
+  <!-- System Info, Settings & Changelog Modal -->
   <div id="infoModal" class="modal-overlay" aria-hidden="true">
     <div class="modal-card info-modal-card">
       <div class="modal-header">
         <div class="info-header-title">
-          <h4>Neon CRM Activities Intelligence</h4>
-          <span class="version-badge">v1.3.0</span>
+          <h4>Neon CRM Intelligence</h4>
+          <span class="version-badge">v1.4.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
-      <div class="modal-body info-modal-body">
-        <div class="info-summary-box">
-          <p><strong>Organization:</strong> socialmedium</p>
-          <p><strong>API Engine:</strong> Neon CRM API v2.11</p>
-          <p><strong>Live URL:</strong> <a href="https://neon-dashboard.onrender.com" target="_blank" class="info-link">neon-dashboard.onrender.com</a></p>
+
+      <!-- Modal Tabs Header -->
+      <div class="tabs-header modal-tabs-header">
+        <button class="tab-btn active" data-tab="infoOverviewTab">ℹ️ Info & Changelog</button>
+        <button class="tab-btn" data-tab="neonConfigTab">🔑 API Config</button>
+        <button class="tab-btn" data-tab="emailConfigTab">📧 Email Digest</button>
+      </div>
+
+      <div class="modal-body info-modal-body tabs-content">
+        <!-- Tab 1: Overview & Changelog -->
+        <div id="infoOverviewTab" class="tab-pane active">
+          <div class="info-summary-box">
+            <p><strong>Organization:</strong> socialmedium</p>
+            <p><strong>API Engine:</strong> Neon CRM API v2.11</p>
+            <p><strong>Live URL:</strong> <a href="https://neon-dashboard.onrender.com" target="_blank" class="info-link">neon-dashboard.onrender.com</a></p>
+          </div>
+
+          <div class="changelog-section">
+            <h5 class="changelog-title">📋 Version History & Changelog</h5>
+
+            <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.4.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🗂️ Moved API & Email Configuration forms inside Information Window.</li>
+                <li>🚫 Filtered out "Club Check-In" activities from Activity Ledger table.</li>
+                <li>🌐 Added Global Date Range filter bar in header for single-click updates across all charts.</li>
+                <li>🧹 Cleaned up top header navigation bar.</li>
+                <li>🖨️ 📧 💾 Added Print, Email, and Save report action buttons with print layout optimization.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
+              <div class="changelog-version">
+                <span class="version-tag">v1.3.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>📈 Converted Club Check-Ins into a multi-line weekly trend graph.</li>
+                <li>📊 Converted Activities by Staff Member into a cumulative daily multi-line chart for tracking relative progress over time.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
+              <div class="changelog-version">
+                <span class="version-tag">v1.2.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>♣️ Added Club Check-Ins by Club bar chart section (grouped by exact club name).</li>
+                <li>📅 Enabled relative time and date range filtering for Club Check-Ins.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
+              <div class="changelog-version">
+                <span class="version-tag">v1.1.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🗓️ Added relative time date selectors (Today, Week, Month, Quarter, Year presets).</li>
+                <li>👥 Multi-staff attribution splitting for activities with multiple assigned members.</li>
+                <li>☑️ Interactive per-staff member inclusion/exclusion checkboxes with local storage persistence.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
+              <div class="changelog-version">
+                <span class="version-tag">v1.0.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🚀 Initial Version 1.0 Release deployed live on Render!</li>
+                <li>📊 Recreated Staff Activity Report with automatic Check-In exclusions.</li>
+                <li>🔄 Chronological descending sorting (showing most recent activities first).</li>
+                <li>🌓 Light Mode and Dark Mode visual theme switcher with saved preferences.</li>
+                <li>📧 Scheduled HTML email report digests via SMTP background cron worker.</li>
+                <li>🔍 Instant activity search, status/priority filtering, pagination, and CSV export.</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
-        <div class="changelog-section">
-          <h5 class="changelog-title">📋 Version History & Changelog</h5>
-
-          <div class="changelog-item">
-            <div class="changelog-version">
-              <span class="version-tag">v1.3.0</span>
-              <span class="release-date">July 2026</span>
+        <!-- Tab 2: Neon API Config -->
+        <div id="neonConfigTab" class="tab-pane">
+          <form id="neonConfigForm" class="config-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="neonOrgId">Organization ID</label>
+                <input type="text" id="neonOrgId" name="neonOrgId" placeholder="Enter Neon Org ID" required>
+                <span class="form-hint">Your numeric ID found in your Neon CRM account settings.</span>
+              </div>
+              <div class="form-group">
+                <label for="neonApiKey">API Key</label>
+                <input type="password" id="neonApiKey" name="neonApiKey" placeholder="••••••••••••••••••••">
+                <span class="form-hint">API user key generated within Neon CRM settings. Leave blank to retain existing key.</span>
+              </div>
+              <div class="form-group full-width">
+                <label for="neonApiUrl">API Base URL</label>
+                <input type="url" id="neonApiUrl" name="neonApiUrl" value="https://api.neoncrm.com/v2" required>
+                <span class="form-hint">Change only if using a sandbox or test environment.</span>
+              </div>
             </div>
-            <ul class="changelog-list">
-              <li>📈 Converted Club Check-Ins into a multi-line weekly trend graph.</li>
-              <li>📊 Converted Activities by Staff Member into a cumulative daily multi-line chart for tracking relative progress over time.</li>
-            </ul>
-          </div>
-
-          <div class="changelog-item" style="margin-top: 1.25rem;">
-            <div class="changelog-version">
-              <span class="version-tag">v1.2.0</span>
-              <span class="release-date">July 2026</span>
+            <div class="form-actions">
+              <button type="submit" id="saveNeonBtn" class="btn btn-primary">Save & Connect Account</button>
             </div>
-            <ul class="changelog-list">
-              <li>♣️ Added Club Check-Ins by Club bar chart section (grouped by exact club name).</li>
-              <li>📅 Enabled relative time and date range filtering for Club Check-Ins.</li>
-            </ul>
-          </div>
-
-          <div class="changelog-item" style="margin-top: 1.25rem;">
-            <div class="changelog-version">
-              <span class="version-tag">v1.1.0</span>
-              <span class="release-date">July 2026</span>
-            </div>
-            <ul class="changelog-list">
-              <li>🗓️ Added relative time date selectors (Today, Week, Month, Quarter, Year presets).</li>
-              <li>👥 Multi-staff attribution splitting for activities with multiple assigned members.</li>
-              <li>☑️ Interactive per-staff member inclusion/exclusion checkboxes with local storage persistence.</li>
-            </ul>
-          </div>
-
-          <div class="changelog-item" style="margin-top: 1.25rem;">
-            <div class="changelog-version">
-              <span class="version-tag">v1.0.0</span>
-              <span class="release-date">July 2026</span>
-            </div>
-            <ul class="changelog-list">
-              <li>🚀 Initial Version 1.0 Release deployed live on Render!</li>
-              <li>📊 Recreated Staff Activity Report with automatic Check-In exclusions.</li>
-              <li>🔄 Chronological descending sorting (showing most recent activities first).</li>
-              <li>🌓 Light Mode and Dark Mode visual theme switcher with saved preferences.</li>
-              <li>📧 Scheduled HTML email report digests via SMTP background cron worker.</li>
-              <li>🔍 Instant activity search, status/priority filtering, pagination, and CSV export.</li>
-            </ul>
-          </div>
+          </form>
         </div>
+
+        <!-- Tab 3: Email Reports Config -->
+        <div id="emailConfigTab" class="tab-pane">
+          <form id="emailConfigForm" class="config-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="smtpHost">SMTP Host Server</label>
+                <input type="text" id="smtpHost" name="smtpHost" placeholder="smtp.gmail.com" required>
+              </div>
+              <div class="form-group">
+                <label for="smtpPort">SMTP Port</label>
+                <input type="number" id="smtpPort" name="smtpPort" value="587" required>
+              </div>
+              <div class="form-group">
+                <label class="checkbox-container" for="smtpSecure">
+                  <input type="checkbox" id="smtpSecure" name="smtpSecure">
+                  <span class="checkbox-checkmark"></span>
+                  Use SSL (Port 465)
+                </label>
+                <span class="form-hint">Check if using SSL; uncheck if using TLS (Port 587).</span>
+              </div>
+              <div class="form-group">
+                <label for="smtpUser">SMTP Username</label>
+                <input type="text" id="smtpUser" name="smtpUser" placeholder="username@gmail.com" required>
+              </div>
+              <div class="form-group">
+                <label for="smtpPass">SMTP Password</label>
+                <input type="password" id="smtpPass" name="smtpPass" placeholder="••••••••••••••••">
+                <span class="form-hint">Enter your email password or App-Specific Password.</span>
+              </div>
+              <div class="form-group">
+                <label for="emailFrom">Sender Name & Address</label>
+                <input type="text" id="emailFrom" name="emailFrom" placeholder='"Neon CRM Dashboard" <noreply@yourdomain.com>' required>
+              </div>
+              <div class="form-group">
+                <label for="emailRecipient">Recipient Email Address</label>
+                <input type="email" id="emailRecipient" name="emailRecipient" placeholder="yourbox@domain.com" required>
+                <span class="form-hint">Address where dashboard summaries should be emailed.</span>
+              </div>
+              <div class="form-group">
+                <label for="emailSchedule">Cron Schedule Expression</label>
+                <input type="text" id="emailSchedule" name="emailSchedule" value="0 8 * * *" required>
+                <span class="form-hint">Default <code>0 8 * * *</code> is daily at 8:00 AM. <code>0 8 * * 1</code> is weekly on Mondays.</span>
+              </div>
+              <div class="form-group">
+                <label class="checkbox-container" for="emailEnabled">
+                  <input type="checkbox" id="emailEnabled" name="emailEnabled">
+                  <span class="checkbox-checkmark"></span>
+                  Enable Scheduled Reports
+                </label>
+                <span class="form-hint">Enable automatic background emails matching schedule.</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="saveEmailBtn" class="btn btn-primary">Save Email Settings</button>
+              <button type="button" id="sendTestEmailBtn" class="btn btn-secondary">⚡ Send Test Email Now</button>
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
   </div>

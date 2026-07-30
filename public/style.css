@@ -165,7 +165,56 @@ body {
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.global-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-obsidian);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+}
+
+.global-filter-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.header-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-header-action {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: 8px;
+}
+
+.modal-tabs-header {
+  padding: 0 1.5rem;
+  background: var(--bg-obsidian);
+}
+
+.info-modal-card {
+  max-width: 750px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
 }
 
 .control-group {
@@ -1289,6 +1338,39 @@ body.light-theme .modal-card {
 
 .hidden {
   display: none !important;
+}
+
+/* Print Optimization Media Query */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .glow-bg-1, .glow-bg-2, .app-header, .panel-header-actions, .actions-group, .modal-overlay, .toast-container, .btn, .chart-date-filters, .staff-filter-bar, .date-preset-select, .date-input, .table-pagination {
+    display: none !important;
+  }
+  .app-container {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 1rem !important;
+  }
+  .card-glow {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+  .panel-title {
+    color: #0f172a !important;
+  }
+  canvas {
+    max-width: 100% !important;
+  }
+  .interactive-table th, .interactive-table td {
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
 }
 
 

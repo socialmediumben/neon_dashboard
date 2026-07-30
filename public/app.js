@@ -52,12 +52,14 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.1.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.4.0] App initializing...');
   setupTheme();
   setupInfoModal();
   setupTabs();
   setupEventListeners();
   setupChartFilters();
+  setupGlobalDateFilters();
+  setupHeaderActions();
   checkAppStatus().then(() => {
     loadData();
     loadCharts();
@@ -263,9 +265,8 @@ async function loadData() {
   // Clear table state
   tableBody.innerHTML = '<tr><td colspan="8" class="empty-table-state">Loading activities ledger...</td></tr>';
   
-  const reportType = reportSelector.value;
-  const url = `/api/activities?report=${reportType}`;
-  console.log(`📊 [Data] Requesting activities with report view: "${reportType}" from ${url}...`);
+  const url = '/api/activities';
+  console.log(`📊 [Data] Requesting activities from ${url}...`);
 
   try {
     const res = await fetch(url);
@@ -488,6 +489,87 @@ function setupChartFilters() {
     if (preset) preset.value = 'custom';
     renderClubCheckinsChart();
   });
+}
+
+// ─── Global Date Range Filter Setup ─────────────────────────────────────────
+function setupGlobalDateFilters() {
+  bindPresetAndInputs('globalPreset', 'globalAfter', 'globalBefore', () => applyGlobalDatesToAllCharts());
+
+  const applyGlobalBtn = document.getElementById('applyGlobalFilter');
+  if (applyGlobalBtn) {
+    applyGlobalBtn.addEventListener('click', () => applyGlobalDatesToAllCharts());
+  }
+
+  const clearGlobalBtn = document.getElementById('clearGlobalFilter');
+  if (clearGlobalBtn) {
+    clearGlobalBtn.addEventListener('click', () => resetGlobalDatesAllCharts());
+  }
+}
+
+function applyGlobalDatesToAllCharts() {
+  const gAfter = document.getElementById('globalAfter').value;
+  const gBefore = document.getElementById('globalBefore').value;
+  const gPreset = document.getElementById('globalPreset').value;
+
+  const chartPrefixes = ['events', 'checkins', 'staff', 'clubCheckins'];
+
+  chartPrefixes.forEach(prefix => {
+    const afterEl = document.getElementById(`${prefix}After`);
+    const beforeEl = document.getElementById(`${prefix}Before`);
+    const presetEl = document.getElementById(`${prefix}Preset`);
+
+    if (afterEl) afterEl.value = gAfter;
+    if (beforeEl) beforeEl.value = gBefore;
+    if (presetEl) presetEl.value = gPreset;
+  });
+
+  loadEventsChart();
+  renderCheckinsChart();
+  renderStaffChart();
+  renderClubCheckinsChart();
+  showToast('Applied global date range to all charts', 'success');
+}
+
+function resetGlobalDatesAllCharts() {
+  document.getElementById('globalAfter').value = '';
+  document.getElementById('globalBefore').value = '';
+  document.getElementById('globalPreset').value = 'custom';
+
+  const chartPrefixes = ['events', 'checkins', 'staff', 'clubCheckins'];
+
+  chartPrefixes.forEach(prefix => {
+    const afterEl = document.getElementById(`${prefix}After`);
+    const beforeEl = document.getElementById(`${prefix}Before`);
+    const presetEl = document.getElementById(`${prefix}Preset`);
+
+    if (afterEl) afterEl.value = '';
+    if (beforeEl) beforeEl.value = '';
+    if (presetEl) presetEl.value = 'custom';
+  });
+
+  loadEventsChart();
+  renderCheckinsChart();
+  renderStaffChart();
+  renderClubCheckinsChart();
+  showToast('Reset date range to All Time', 'info');
+}
+
+// ─── Header Action Handlers (Print, Email, Save) ─────────────────────────────
+function setupHeaderActions() {
+  const printBtn = document.getElementById('printReportBtn');
+  if (printBtn) {
+    printBtn.addEventListener('click', () => window.print());
+  }
+
+  const emailBtn = document.getElementById('emailDigestBtn');
+  if (emailBtn) {
+    emailBtn.addEventListener('click', handleSendTestEmail);
+  }
+
+  const saveBtn = document.getElementById('saveCsvBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', exportToCsv);
+  }
 }
 
 // ─── Load All Charts ────────────────────────────────────────────────────────
@@ -1069,8 +1151,16 @@ function filterAndRenderTable() {
   const priorityVal = filterPriority.value;
 
   filteredActivities = activities.filter(a => {
+    const subjectLower = (a['Activity Subject'] || '').toLowerCase();
+    const typeLower = (a['Activity Type'] || '').toLowerCase();
+
+    // Exclude "Club Check-In" activities from Activity Ledger table
+    if (subjectLower.includes('club check-in') || typeLower.includes('club check-in')) {
+      return false;
+    }
+
     // Search match (subject or notes)
-    const subjectMatch = a['Activity Subject'] ? a['Activity Subject'].toLowerCase().includes(searchVal) : false;
+    const subjectMatch = subjectLower.includes(searchVal);
     const notesMatch = a['Activity Note'] ? a['Activity Note'].toLowerCase().includes(searchVal) : false;
     const searchMatch = !searchVal || subjectMatch || notesMatch;
 
@@ -1133,22 +1223,13 @@ function renderTableOnly() {
   const now = new Date();
   now.setHours(0,0,0,0);
 
-  // Update headers dynamically for Staff Activity Report
   const typeHeader = document.querySelector('#activitiesTable th:nth-child(3)');
   const memberHeader = document.querySelector('#activitiesTable th:nth-child(4)');
   const assignedHeader = document.querySelector('#activitiesTable th:nth-child(5)');
   
-  const isStaffReport = reportSelector.value === 'staff-activity';
-
-  if (isStaffReport) {
-    if (typeHeader) typeHeader.textContent = 'Solicitation Method';
-    if (memberHeader) memberHeader.textContent = 'Account Name';
-    if (assignedHeader) assignedHeader.textContent = 'Owner ID';
-  } else {
-    if (typeHeader) typeHeader.textContent = 'Type';
-    if (memberHeader) memberHeader.textContent = 'Member ID';
-    if (assignedHeader) assignedHeader.textContent = 'Assigned To';
-  }
+  if (typeHeader) typeHeader.textContent = 'Type';
+  if (memberHeader) memberHeader.textContent = 'Member ID';
+  if (assignedHeader) assignedHeader.textContent = 'Assigned To';
 
   tableBody.innerHTML = '';
   const pageData = filteredActivities.slice(startIdx, endIdx);
