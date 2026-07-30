@@ -12,22 +12,68 @@ let checkinsChartInstance = null;
 let staffChartInstance = null;
 let clubCheckinsChartInstance = null;
 
-let disabledStaffSet = new Set();
-let disabledClubsSet = new Set();
+// 3-State Toggle Maps ('full' | 'avg_only' | 'ignored')
+let dowStateMap = loadDowStateMap();
+let staffStateMap = loadStaffStateMap();
+let clubStateMap = loadClubStateMap();
 
-function loadDisabledClubs() {
-  const saved = localStorage.getItem('neon_disabled_clubs');
-  if (saved) {
-    try {
-      disabledClubsSet = new Set(JSON.parse(saved));
-    } catch (e) {
-      disabledClubsSet = new Set();
-    }
-  }
+function loadDowStateMap() {
+  const saved = localStorage.getItem('neon_dow_states');
+  const defaults = { Mon: 'full', Tue: 'full', Wed: 'full', Thu: 'full', Fri: 'full', Sat: 'full', Sun: 'full' };
+  if (!saved) return defaults;
+  try { return { ...defaults, ...JSON.parse(saved) }; } catch (e) { return defaults; }
 }
 
-function saveDisabledClubs() {
-  localStorage.setItem('neon_disabled_clubs', JSON.stringify(Array.from(disabledClubsSet)));
+function saveDowStateMap() {
+  localStorage.setItem('neon_dow_states', JSON.stringify(dowStateMap));
+}
+
+function loadStaffStateMap() {
+  const saved = localStorage.getItem('neon_staff_states');
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { return {}; }
+  }
+  const legacyDisabled = localStorage.getItem('neon_disabled_staff');
+  if (legacyDisabled) {
+    try {
+      const arr = JSON.parse(legacyDisabled);
+      const map = {};
+      arr.forEach(name => { map[name] = 'ignored'; });
+      return map;
+    } catch (e) {}
+  }
+  return {};
+}
+
+function saveStaffStateMap() {
+  localStorage.setItem('neon_staff_states', JSON.stringify(staffStateMap));
+}
+
+function loadClubStateMap() {
+  const saved = localStorage.getItem('neon_club_states');
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { return {}; }
+  }
+  const legacyDisabled = localStorage.getItem('neon_disabled_clubs');
+  if (legacyDisabled) {
+    try {
+      const arr = JSON.parse(legacyDisabled);
+      const map = {};
+      arr.forEach(name => { map[name] = 'ignored'; });
+      return map;
+    } catch (e) {}
+  }
+  return {};
+}
+
+function saveClubStateMap() {
+  localStorage.setItem('neon_club_states', JSON.stringify(clubStateMap));
+}
+
+function cycleState(currentState) {
+  if (currentState === 'full' || !currentState) return 'avg_only';
+  if (currentState === 'avg_only') return 'ignored';
+  return 'full';
 }
 
 // DOM Elements
@@ -70,9 +116,10 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.7] App initializing...');
-  loadDisabledStaff();
-  loadDisabledClubs();
+  console.log('🚀 [Neon CRM Dashboard v1.7.0] App initializing...');
+  dowStateMap = loadDowStateMap();
+  staffStateMap = loadStaffStateMap();
+  clubStateMap = loadClubStateMap();
   setupTheme();
   setupInfoModal();
   setupSectionHelpModals();
@@ -878,7 +925,7 @@ function setupConfigSharing() {
 
 function getReportConfigObject() {
   return {
-    version: '1.6.6',
+    version: '1.7.0',
     savedAt: new Date().toISOString(),
     globalDate: {
       preset: document.getElementById('globalPreset')?.value || 'custom',
@@ -907,8 +954,9 @@ function getReportConfigObject() {
         before: document.getElementById('clubCheckinsBefore')?.value || ''
       }
     },
-    disabledStaff: Array.from(disabledStaffSet),
-    disabledClubs: Array.from(disabledClubsSet),
+    dowStateMap: { ...dowStateMap },
+    staffStateMap: { ...staffStateMap },
+    clubStateMap: { ...clubStateMap },
     tableFilters: {
       search: document.getElementById('tableSearch')?.value || '',
       exclude: document.getElementById('tableExclude')?.value || 'Check-In',
@@ -936,14 +984,19 @@ function applyReportConfigObject(config) {
     });
   }
 
-  if (Array.isArray(config.disabledStaff)) {
-    disabledStaffSet = new Set(config.disabledStaff);
-    saveDisabledStaff();
+  if (config.dowStateMap && typeof config.dowStateMap === 'object') {
+    dowStateMap = { ...config.dowStateMap };
+    saveDowStateMap();
   }
 
-  if (Array.isArray(config.disabledClubs)) {
-    disabledClubsSet = new Set(config.disabledClubs);
-    saveDisabledClubs();
+  if (config.staffStateMap && typeof config.staffStateMap === 'object') {
+    staffStateMap = { ...config.staffStateMap };
+    saveStaffStateMap();
+  }
+
+  if (config.clubStateMap && typeof config.clubStateMap === 'object') {
+    clubStateMap = { ...config.clubStateMap };
+    saveClubStateMap();
   }
 
   if (config.tableFilters) {
@@ -1134,6 +1187,8 @@ function renderCheckinsChart() {
   const after = document.getElementById('checkinsAfter').value;
   const before = document.getElementById('checkinsBefore').value;
 
+  const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   // Filter activities to only Check-In subject
   let checkins = activities.filter(a =>
     (a['Activity Subject'] || '').toLowerCase().includes('check-in') ||
@@ -1145,16 +1200,42 @@ function renderCheckinsChart() {
 
   console.log(`📍 [Check-Ins Chart] Rendering ${checkins.length} check-in activities.`);
 
-  // Group by date
+  // Group by date, ignoring dates belonging to 'ignored' days
   const counts = {};
   checkins.forEach(a => {
     const date = a['Activity Date'];
-    if (date) counts[date] = (counts[date] || 0) + 1;
+    if (!date) return;
+    const d = new Date(date + 'T00:00:00');
+    if (isNaN(d.getTime())) return;
+    const dKey = dayKeys[d.getDay()];
+
+    if (dowStateMap[dKey] === 'ignored') return;
+
+    counts[date] = (counts[date] || 0) + 1;
   });
 
   const sortedDates = Object.keys(counts).sort();
-  const totalCount = sortedDates.reduce((sum, d) => sum + counts[d], 0);
-  const avg = sortedDates.length > 0 ? (totalCount / sortedDates.length) : 0;
+
+  // For daily average reference line, include dates belonging to 'full' or 'avg_only' days
+  let sumForAvg = 0;
+  let countForAvg = 0;
+  sortedDates.forEach(dStr => {
+    const d = new Date(dStr + 'T00:00:00');
+    const dKey = dayKeys[d.getDay()];
+    if (dowStateMap[dKey] === 'full' || dowStateMap[dKey] === 'avg_only') {
+      sumForAvg += counts[dStr];
+      countForAvg++;
+    }
+  });
+
+  const avg = countForAvg > 0 ? (sumForAvg / countForAvg) : 0;
+
+  // Chart line data: Show count for 'full' days, null for 'avg_only' days
+  const lineData = sortedDates.map(dStr => {
+    const d = new Date(dStr + 'T00:00:00');
+    const dKey = dayKeys[d.getDay()];
+    return dowStateMap[dKey] === 'full' ? counts[dStr] : null;
+  });
 
   const container = document.getElementById('checkinsChart').parentElement;
   container.innerHTML = '<canvas id="checkinsChart"></canvas>';
@@ -1173,7 +1254,7 @@ function renderCheckinsChart() {
       datasets: [
         {
           label: 'Check-Ins',
-          data: sortedDates.map(d => counts[d]),
+          data: lineData,
           borderColor: '#ff007f',
           backgroundColor: 'rgba(255, 0, 127, 0.12)',
           pointBackgroundColor: '#ff007f',
@@ -1181,7 +1262,8 @@ function renderCheckinsChart() {
           pointHoverRadius: 7,
           fill: true,
           tension: 0.4,
-          borderWidth: 2
+          borderWidth: 2,
+          spanGaps: true
         },
         {
           label: `Daily Average (${avg.toFixed(1)}/day)`,
@@ -1266,20 +1348,46 @@ function renderCheckinsDowStats(checkins) {
 
   const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  container.innerHTML = order.map(dayKey => {
+  container.innerHTML = '';
+  order.forEach(dayKey => {
     const item = daysMap[dayKey];
     const total = item.total;
     const numOccurrences = item.dateSet.size || 1;
     const avg = total > 0 ? (total / numOccurrences) : 0;
+    const state = dowStateMap[dayKey] || 'full';
 
-    return `
-      <div class="dow-card">
-        <div class="dow-day-name">${item.name}</div>
-        <div class="dow-stat-total">${total}</div>
-        <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/day</div>
-      </div>
+    let badgeClass = 'badge-full';
+    let badgeText = 'Chart + Avg';
+    let cardStateClass = 'state-full';
+
+    if (state === 'avg_only') {
+      badgeClass = 'badge-avg-only';
+      badgeText = 'Avg Only';
+      cardStateClass = 'state-avg-only';
+    } else if (state === 'ignored') {
+      badgeClass = 'badge-ignored';
+      badgeText = 'Ignored';
+      cardStateClass = 'state-ignored';
+    }
+
+    const card = document.createElement('div');
+    card.className = `dow-card ${cardStateClass}`;
+    card.title = `Click to toggle state (${badgeText})`;
+    card.innerHTML = `
+      <div class="dow-day-name">${item.name}</div>
+      <div class="dow-stat-total">${total}</div>
+      <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/day</div>
+      <span class="card-status-badge ${badgeClass}">${badgeText}</span>
     `;
-  }).join('');
+
+    card.addEventListener('click', () => {
+      dowStateMap[dayKey] = cycleState(dowStateMap[dayKey]);
+      saveDowStateMap();
+      renderCheckinsChart();
+    });
+
+    container.appendChild(card);
+  });
 }
 
 // ─── Staff Filter & Multi-Staff Attribution Helpers ─────────────────────────
@@ -1304,72 +1412,57 @@ function extractStaffNames(createdByStr) {
   return parts.length > 0 ? parts : ['Unassigned'];
 }
 
-function updateStaffFilterUI(allStaffMap) {
-  const container = document.getElementById('staffFilterBar');
+function renderStaffCardsUI(allStaffMap, data) {
+  const container = document.getElementById('staffCardGrid');
   if (!container) return;
 
-  const staffNames = Object.keys(allStaffMap).sort();
+  const staffNames = Object.keys(allStaffMap).sort((a, b) => allStaffMap[b] - allStaffMap[a]);
   if (staffNames.length === 0) {
-    container.innerHTML = '';
+    container.innerHTML = '<div class="empty-table-state">No staff activity data.</div>';
     return;
   }
 
-  let html = `
-    <span class="staff-filter-label">Filter Staff:</span>
-    <div class="staff-filter-actions">
-      <button type="button" class="btn-staff-action" id="selectAllStaff">Select All</button>
-      <button type="button" class="btn-staff-action" id="deselectAllStaff">Deselect All</button>
-    </div>
-    <div class="staff-checkbox-list">
-  `;
+  const uniqueDates = new Set(data.map(a => a['Activity Date']).filter(Boolean));
+  const numDays = uniqueDates.size || 1;
 
-  staffNames.forEach(name => {
-    const isChecked = !disabledStaffSet.has(name);
-    const count = allStaffMap[name];
-    html += `
-      <label class="staff-checkbox-item">
-        <input type="checkbox" data-staff="${encodeURIComponent(name)}" ${isChecked ? 'checked' : ''}>
-        <span>${name} (${count})</span>
-      </label>
+  container.innerHTML = '';
+  staffNames.forEach(staffName => {
+    const total = allStaffMap[staffName] || 0;
+    const avg = total / numDays;
+    const state = staffStateMap[staffName] || 'full';
+
+    let badgeClass = 'badge-full';
+    let badgeText = 'Chart + Avg';
+    let cardStateClass = 'state-full';
+
+    if (state === 'avg_only') {
+      badgeClass = 'badge-avg-only';
+      badgeText = 'Avg Only';
+      cardStateClass = 'state-avg-only';
+    } else if (state === 'ignored') {
+      badgeClass = 'badge-ignored';
+      badgeText = 'Ignored';
+      cardStateClass = 'state-ignored';
+    }
+
+    const card = document.createElement('div');
+    card.className = `dow-card ${cardStateClass}`;
+    card.title = `Click to toggle ${staffName} state (${badgeText})`;
+    card.innerHTML = `
+      <div class="dow-day-name" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${staffName}">${staffName}</div>
+      <div class="dow-stat-total">${total}</div>
+      <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/day</div>
+      <span class="card-status-badge ${badgeClass}">${badgeText}</span>
     `;
+
+    card.addEventListener('click', () => {
+      staffStateMap[staffName] = cycleState(staffStateMap[staffName]);
+      saveStaffStateMap();
+      renderStaffChart();
+    });
+
+    container.appendChild(card);
   });
-
-  html += `</div>`;
-  container.innerHTML = html;
-
-  // Event Listeners for checkboxes
-  container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const staffName = decodeURIComponent(e.target.dataset.staff);
-      if (e.target.checked) {
-        disabledStaffSet.delete(staffName);
-      } else {
-        disabledStaffSet.add(staffName);
-      }
-      saveDisabledStaff();
-      renderStaffChart();
-    });
-  });
-
-  const selectAllBtn = document.getElementById('selectAllStaff');
-  if (selectAllBtn) {
-    selectAllBtn.addEventListener('click', () => {
-      disabledStaffSet.clear();
-      saveDisabledStaff();
-      updateStaffFilterUI(allStaffMap);
-      renderStaffChart();
-    });
-  }
-
-  const deselectAllBtn = document.getElementById('deselectAllStaff');
-  if (deselectAllBtn) {
-    deselectAllBtn.addEventListener('click', () => {
-      staffNames.forEach(name => disabledStaffSet.add(name));
-      saveDisabledStaff();
-      updateStaffFilterUI(allStaffMap);
-      renderStaffChart();
-    });
-  }
 }
 
 // ─── Chart 3: Activities by Staff Member (Cumulative Multi-Line Chart) ──────
@@ -1381,7 +1474,7 @@ function renderStaffChart() {
   if (after) data = data.filter(a => a['Activity Date'] >= after);
   if (before) data = data.filter(a => a['Activity Date'] <= before);
 
-  // Extract all unique staff and build activity count map per staff for checkbox filter
+  // Extract all unique staff and build activity count map per staff
   const allStaffMap = {};
   data.forEach(a => {
     const staffList = extractStaffNames(a['Created By']);
@@ -1390,12 +1483,12 @@ function renderStaffChart() {
     });
   });
 
-  // Render/Update the staff filter checkboxes
-  updateStaffFilterUI(allStaffMap);
+  // Render 3-State Staff Metric Cards
+  renderStaffCardsUI(allStaffMap, data);
 
-  // Active staff (checked checkboxes) sorted by total count
+  // Active staff for chart line (state === 'full')
   const activeStaff = Object.keys(allStaffMap)
-    .filter(name => !disabledStaffSet.has(name))
+    .filter(name => (staffStateMap[name] || 'full') === 'full')
     .sort((a, b) => allStaffMap[b] - allStaffMap[a]);
 
   // Extract all unique dates in ascending order
@@ -1552,39 +1645,53 @@ function getWeekStartDate(dateStr) {
 }
 
 // ─── Interactive Club Filter UI Checkboxes ────────────────────────────────────
-function updateClubFilterUI(allClubs) {
-  const container = document.getElementById('clubFilterBar');
+function renderClubCardsUI(clubNames, clubWeeklyCounts, numWeeks) {
+  const container = document.getElementById('clubCardGrid');
   if (!container) return;
 
-  if (allClubs.length === 0) {
-    container.innerHTML = '';
+  if (clubNames.length === 0) {
+    container.innerHTML = '<div class="empty-table-state">No club check-in data.</div>';
     return;
   }
 
-  container.innerHTML = '<span class="filter-bar-title">Clubs:</span>';
+  container.innerHTML = '';
+  clubNames.forEach(clubName => {
+    const weeklyData = clubWeeklyCounts[clubName] || {};
+    const total = Object.values(weeklyData).reduce((sum, v) => sum + v, 0);
+    const avg = total / numWeeks;
+    const state = clubStateMap[clubName] || 'full';
 
-  allClubs.forEach(club => {
-    const isChecked = !disabledClubsSet.has(club);
-    const label = document.createElement('label');
-    label.className = 'staff-checkbox-item';
+    let badgeClass = 'badge-full';
+    let badgeText = 'Chart + Avg';
+    let cardStateClass = 'state-full';
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = isChecked;
+    if (state === 'avg_only') {
+      badgeClass = 'badge-avg-only';
+      badgeText = 'Avg Only';
+      cardStateClass = 'state-avg-only';
+    } else if (state === 'ignored') {
+      badgeClass = 'badge-ignored';
+      badgeText = 'Ignored';
+      cardStateClass = 'state-ignored';
+    }
 
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        disabledClubsSet.delete(club);
-      } else {
-        disabledClubsSet.add(club);
-      }
-      saveDisabledClubs();
+    const card = document.createElement('div');
+    card.className = `dow-card ${cardStateClass}`;
+    card.title = `Click to toggle ${clubName} state (${badgeText})`;
+    card.innerHTML = `
+      <div class="dow-day-name" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${clubName}">${clubName}</div>
+      <div class="dow-stat-total">${total}</div>
+      <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/wk</div>
+      <span class="card-status-badge ${badgeClass}">${badgeText}</span>
+    `;
+
+    card.addEventListener('click', () => {
+      clubStateMap[clubName] = cycleState(clubStateMap[clubName]);
+      saveClubStateMap();
       renderClubCheckinsChart();
     });
 
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(` ${club}`));
-    container.appendChild(label);
+    container.appendChild(card);
   });
 }
 
@@ -1622,11 +1729,10 @@ function renderClubCheckinsChart() {
 
   const sortedWeekStarts = Array.from(weekStartDatesSet).sort();
   const sortedClubNames = Array.from(clubNamesSet).sort();
+  const numWeeks = sortedWeekStarts.length || 1;
 
-  // Render per-club filter checkboxes
-  updateClubFilterUI(sortedClubNames);
-
-  const activeClubNames = sortedClubNames.filter(name => !disabledClubsSet.has(name));
+  // Render per-club 3-state metric cards
+  renderClubCardsUI(sortedClubNames, clubWeeklyCounts, numWeeks);
 
   // Format week labels as "Week of M/D"
   const weekLabels = sortedWeekStarts.map(wStr => {
@@ -1650,28 +1756,32 @@ function renderClubCheckinsChart() {
 
   const datasets = [];
   const activeClubAverages = [];
-  const numWeeks = sortedWeekStarts.length || 1;
 
-  activeClubNames.forEach((clubName, i) => {
+  sortedClubNames.forEach((clubName, i) => {
+    const state = clubStateMap[clubName] || 'full';
+    if (state === 'ignored') return;
+
     const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
     const clubTotal = data.reduce((sum, v) => sum + v, 0);
     const clubAvg = clubTotal / numWeeks;
     activeClubAverages.push(clubAvg);
     const color = palette[i % palette.length];
 
-    // 1) Main weekly trend line
-    datasets.push({
-      label: clubName,
-      data,
-      borderColor: color,
-      backgroundColor: color + '22',
-      pointBackgroundColor: color,
-      pointRadius: 5,
-      pointHoverRadius: 8,
-      fill: false,
-      tension: 0.3,
-      borderWidth: 2
-    });
+    // 1) Main weekly trend line (if 'full' state)
+    if (state === 'full') {
+      datasets.push({
+        label: clubName,
+        data,
+        borderColor: color,
+        backgroundColor: color + '22',
+        pointBackgroundColor: color,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        fill: false,
+        tension: 0.3,
+        borderWidth: 2
+      });
+    }
 
     // 2) Per-Club Average Line (dashed, matching club color)
     datasets.push({
@@ -1691,8 +1801,8 @@ function renderClubCheckinsChart() {
     ? (activeClubAverages.reduce((sum, a) => sum + a, 0) / activeClubAverages.length) 
     : 0;
 
-  // 3) Overall Average Line across all active clubs (Black in light mode, White in dark mode)
-  if (activeClubNames.length > 0) {
+  // 3) Overall Average Line across all active/avg_only clubs
+  if (activeClubAverages.length > 0) {
     datasets.push({
       label: `Overall Average (${overallWeeklyAvg.toFixed(1)}/wk)`,
       data: sortedWeekStarts.map(() => overallWeeklyAvg),

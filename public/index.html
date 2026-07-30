@@ -209,8 +209,11 @@
             <button id="clearStaffFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
-        <!-- Per-Staff Selection Checkboxes -->
-        <div id="staffFilterBar" class="staff-filter-bar"></div>
+        <!-- Per-Staff 3-State Metric Cards -->
+        <div class="subpanel-container" style="margin-top:0; padding-top:0; border-top:none; margin-bottom:1rem;">
+          <h4 class="subpanel-title">👥 Staff Breakdown</h4>
+          <div id="staffCardGrid" class="dow-grid"></div>
+        </div>
         <div class="chart-container-tall">
           <canvas id="staffChart"></canvas>
         </div>
@@ -247,8 +250,11 @@
             <button id="clearClubCheckinsFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
-        <!-- Per-Club Selection Checkboxes -->
-        <div id="clubFilterBar" class="staff-filter-bar"></div>
+        <!-- Per-Club 3-State Metric Cards -->
+        <div class="subpanel-container" style="margin-top:0; padding-top:0; border-top:none; margin-bottom:1rem;">
+          <h4 class="subpanel-title">♣️ Clubs Breakdown</h4>
+          <div id="clubCardGrid" class="dow-grid"></div>
+        </div>
         <div class="chart-container-tall">
           <canvas id="clubCheckinsChart"></canvas>
         </div>
@@ -385,7 +391,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.6.7</span>
+          <span class="version-badge">v1.7.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -410,6 +416,18 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.7.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🎛️ Added Interactive 3-State Toggle Cards across Check-Ins (Mon-Sun), Activities by Staff Member, and Club Check-Ins by Club.</li>
+                <li>🔄 Card States: 🟢 <b>Chart + Avg</b> (line + average), 🟡 <b>Avg Only</b> (average calculation only), and 🔴 <b>Ignored</b> (excluded from chart & average).</li>
+                <li>💾 Integrated 3-state toggle persistence into Browser Storage and App Presets.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.6.7</span>
                 <span class="release-date">July 2026</span>
