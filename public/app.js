@@ -119,7 +119,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.8.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.8.1] App initializing...');
   dowStateMap = loadDowStateMap();
   staffStateMap = loadStaffStateMap();
   clubStateMap = loadClubStateMap();
@@ -547,6 +547,11 @@ function getRelativeDateRange(preset) {
       endDate = new Date(year, month + 1, 0);
       break;
 
+    case 'this_month_to_date':
+      startDate = new Date(year, month, 1);
+      endDate = new Date(year, month, date);
+      break;
+
     case 'last_month':
       startDate = new Date(year, month - 1, 1);
       endDate = new Date(year, month, 0);
@@ -581,6 +586,11 @@ function getRelativeDateRange(preset) {
     case 'this_year':
       startDate = new Date(year, 0, 1);
       endDate = new Date(year, 11, 31);
+      break;
+
+    case 'this_year_to_date':
+      startDate = new Date(year, 0, 1);
+      endDate = new Date(year, month, date);
       break;
 
     case 'last_year':
