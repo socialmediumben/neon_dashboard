@@ -116,7 +116,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.7.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.7.1] App initializing...');
   dowStateMap = loadDowStateMap();
   staffStateMap = loadStaffStateMap();
   clubStateMap = loadClubStateMap();
@@ -1814,7 +1814,7 @@ function renderClubCheckinsChart() {
     });
   }
 
-  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} datasets for ${activeClubNames.length} active clubs across ${sortedWeekStarts.length} weeks.`);
+  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} datasets for ${activeClubAverages.length} active clubs across ${sortedWeekStarts.length} weeks.`);
 
   const container = document.getElementById('clubCheckinsChart').parentElement;
   container.innerHTML = '<canvas id="clubCheckinsChart"></canvas>';
