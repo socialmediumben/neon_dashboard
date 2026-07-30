@@ -179,6 +179,64 @@ body {
   border-radius: 14px;
 }
 
+/* Subpanel Container & Day of Week Grid */
+.subpanel-container {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-glass);
+}
+
+.subpanel-title {
+  font-family: var(--font-header);
+  font-size: 0.9rem;
+  color: var(--neon-cyan);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.dow-card {
+  background: var(--bg-obsidian);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  transition: var(--transition-fast);
+}
+
+.dow-card:hover {
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.15);
+}
+
+.dow-day-name {
+  font-family: var(--font-header);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+}
+
+.dow-stat-total {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--neon-pink);
+}
+
+.dow-stat-avg {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
 .global-date-filters {
   display: flex;
   align-items: center;

@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.1] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.2] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -156,6 +156,7 @@ const SECTION_DOCS = {
       <ul>
         <li><strong>Pink Line (Daily Count):</strong> Shows the exact number of check-in activities logged on each individual calendar date.</li>
         <li><strong>Dashed Cyan Line (Daily Average):</strong> Displays the mean average check-ins per day across the selected date range.</li>
+        <li><strong>📅 Day of Week Breakdown:</strong> Sub-panel grid displaying Total check-ins and Daily Average per weekday (Mondays-Sundays).</li>
         <li><strong>Filtering:</strong> Filterable by custom date range or relative time presets.</li>
       </ul>
     `
@@ -1011,6 +1012,57 @@ function renderCheckinsChart() {
       }
     }
   });
+
+  // Render Day of Week Breakdown Cards
+  renderCheckinsDowStats(checkins);
+}
+
+// ─── Check-Ins Day of Week Breakdown Cards ──────────────────────────────────
+function renderCheckinsDowStats(checkins) {
+  const container = document.getElementById('checkinsDowGrid');
+  if (!container) return;
+
+  const daysMap = {
+    Mon: { name: 'Mondays', total: 0, dateSet: new Set() },
+    Tue: { name: 'Tuesdays', total: 0, dateSet: new Set() },
+    Wed: { name: 'Wednesdays', total: 0, dateSet: new Set() },
+    Thu: { name: 'Thursdays', total: 0, dateSet: new Set() },
+    Fri: { name: 'Fridays', total: 0, dateSet: new Set() },
+    Sat: { name: 'Saturdays', total: 0, dateSet: new Set() },
+    Sun: { name: 'Sundays', total: 0, dateSet: new Set() }
+  };
+
+  const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  checkins.forEach(a => {
+    const dateStr = a['Activity Date'];
+    if (!dateStr) return;
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return;
+    const dayKey = dayKeys[d.getDay()];
+
+    if (daysMap[dayKey]) {
+      daysMap[dayKey].total += 1;
+      daysMap[dayKey].dateSet.add(dateStr);
+    }
+  });
+
+  const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  container.innerHTML = order.map(dayKey => {
+    const item = daysMap[dayKey];
+    const total = item.total;
+    const numOccurrences = item.dateSet.size || 1;
+    const avg = total > 0 ? (total / numOccurrences) : 0;
+
+    return `
+      <div class="dow-card">
+        <div class="dow-day-name">${item.name}</div>
+        <div class="dow-stat-total">${total}</div>
+        <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/day</div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ─── Staff Filter & Multi-Staff Attribution Helpers ─────────────────────────
