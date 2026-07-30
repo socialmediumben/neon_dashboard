@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.4] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.6] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -703,8 +703,8 @@ function setupHeaderActions() {
 
 // ─── Config Sharing (App Storage & Shared JSON Export/Import) ─────────────────
 function setupConfigSharing() {
-  const saveConfigBtn = document.getElementById('saveReportConfigBtn');
-  const loadConfigBtn = document.getElementById('loadReportConfigBtn');
+  const saveConfigBtn = document.getElementById('saveConfigBtn') || document.getElementById('saveReportConfigBtn');
+  const loadConfigBtn = document.getElementById('loadConfigBtn') || document.getElementById('loadReportConfigBtn');
   const configChoiceModal = document.getElementById('configChoiceModal');
   const closeChoiceModalBtn = document.getElementById('closeConfigChoiceModalBtn');
   const choiceTitle = document.getElementById('configChoiceModalTitle');
