@@ -174,13 +174,13 @@
             <button id="clearCheckinsFilter" class="btn btn-filter-clear">All Time</button>
           </div>
         </div>
+        <!-- Check-Ins Breakdown Sub-panel (above chart) -->
+        <div class="subpanel-container" style="margin-bottom:1rem;">
+          <h4 class="subpanel-title">📅 Check-Ins Breakdown</h4>
+          <div id="checkinsDowGrid" class="dow-grid"></div>
+        </div>
         <div class="chart-container-tall">
           <canvas id="checkinsChart"></canvas>
-        </div>
-        <!-- Day of Week Breakdown Sub-panel -->
-        <div class="subpanel-container">
-          <h4 class="subpanel-title">📅 Check-Ins by Day of Week</h4>
-          <div id="checkinsDowGrid" class="dow-grid"></div>
         </div>
       </div>
 
@@ -438,7 +438,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.8.1</span>
+          <span class="version-badge">v1.8.2</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -463,6 +463,19 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.8.2</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🔍 Check-Ins Over Time now uses <b>exact match</b> for "Check-In" — excludes activities like "Club Check-In" that only contain it as part of the name.</li>
+                <li>📈 Staff Overall Average line is now <b>cumulative</b> — averages the running totals of each staff member per day, so it never goes down.</li>
+                <li>📐 Renamed "Check-Ins by Day of Week" to <b>Check-Ins Breakdown</b> and moved it above the chart to match the other sections.</li>
+                <li>🟢 Added <b>colored dots</b> to Staff and Club breakdown cards matching their chart line color. Chart legends hidden since breakdown serves as the legend.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.8.1</span>
                 <span class="release-date">July 2026</span>

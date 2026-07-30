@@ -294,6 +294,15 @@ body {
   margin-top: 0.2rem;
 }
 
+.card-color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-bottom: 0.3rem;
+  flex-shrink: 0;
+}
+
 .global-date-filters {
   display: flex;
   align-items: center;

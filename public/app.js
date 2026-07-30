@@ -119,7 +119,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.8.1] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.8.2] App initializing...');
   dowStateMap = loadDowStateMap();
   staffStateMap = loadStaffStateMap();
   clubStateMap = loadClubStateMap();
@@ -1207,11 +1207,11 @@ function renderCheckinsChart() {
 
   const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Filter activities to only Check-In subject
-  let checkins = activities.filter(a =>
-    (a['Activity Subject'] || '').toLowerCase().includes('check-in') ||
-    (a['Activity Type'] || '').toLowerCase().includes('check-in')
-  );
+  // Filter activities to ONLY exact "Check-In" (full subject match, case-insensitive)
+  let checkins = activities.filter(a => {
+    const subject = (a['Activity Subject'] || '').trim().toLowerCase();
+    return subject === 'check-in';
+  });
 
   if (after) checkins = checkins.filter(a => a['Activity Date'] >= after);
   if (before) checkins = checkins.filter(a => a['Activity Date'] <= before);
@@ -1430,7 +1430,7 @@ function extractStaffNames(createdByStr) {
   return parts.length > 0 ? parts : ['Unassigned'];
 }
 
-function renderStaffCardsUI(allStaffMap, data) {
+function renderStaffCardsUI(allStaffMap, data, palette, activeStaff) {
   const container = document.getElementById('staffCardGrid');
   if (!container) return;
 
@@ -1448,6 +1448,12 @@ function renderStaffCardsUI(allStaffMap, data) {
     const total = allStaffMap[staffName] || 0;
     const avg = total / numDays;
     const state = staffStateMap[staffName] || 'full';
+
+    // Get chart color for this staff member (full = has chart line, avg_only = dashed, ignored = grey)
+    const chartIndex = activeStaff.indexOf(staffName);
+    const dotColor = state === 'ignored'
+      ? 'rgba(255,255,255,0.2)'
+      : (palette[chartIndex >= 0 ? chartIndex : activeStaff.length + staffNames.indexOf(staffName)] || palette[staffNames.indexOf(staffName) % palette.length]);
 
     let badgeClass = 'badge-full';
     let badgeText = 'Chart + Avg';
@@ -1467,6 +1473,7 @@ function renderStaffCardsUI(allStaffMap, data) {
     card.className = `dow-card ${cardStateClass}`;
     card.title = `Click to toggle ${staffName} state (${badgeText})`;
     card.innerHTML = `
+      <span class="card-color-dot" style="background:${dotColor};"></span>
       <div class="dow-day-name" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${staffName}">${staffName}</div>
       <div class="dow-stat-total">${total}</div>
       <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/day</div>
@@ -1501,13 +1508,25 @@ function renderStaffChart() {
     });
   });
 
-  // Render 3-State Staff Metric Cards
-  renderStaffCardsUI(allStaffMap, data);
+  // Shared palette (same order for cards and chart lines)
+  const palette = [
+    '#00f2fe',
+    '#9d4edd',
+    '#ff007f',
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#6366f1'
+  ];
 
-  // Active staff for chart line (state === 'full')
+  // Active staff for chart line (state === 'full'), sorted by total descending
   const activeStaff = Object.keys(allStaffMap)
     .filter(name => (staffStateMap[name] || 'full') === 'full')
     .sort((a, b) => allStaffMap[b] - allStaffMap[a]);
+
+  // Render 3-State Staff Metric Cards (with palette so dots match chart lines)
+  renderStaffCardsUI(allStaffMap, data, palette, activeStaff);
 
   // Avg-only staff: included in Overall Average but not charted
   const avgOnlyStaff = Object.keys(allStaffMap)
@@ -1566,17 +1585,6 @@ function renderStaffChart() {
     });
   });
 
-  const palette = [
-    '#00f2fe',
-    '#9d4edd',
-    '#ff007f',
-    '#3b82f6',
-    '#10b981',
-    '#f59e0b',
-    '#ef4444',
-    '#6366f1'
-  ];
-
   // Build cumulative datasets for each active (chart-visible) staff
   const datasets = activeStaff.map((staff, i) => {
     let cumSum = 0;
@@ -1601,14 +1609,25 @@ function renderStaffChart() {
     };
   });
 
-  // Build dynamic Overall Average line (avg of daily activity counts across all contributors)
+  // Build dynamic Overall Average line — average of cumulative totals per day (never goes down)
   if (avgContributors.length > 0) {
     const isDarkNow = !document.body.classList.contains('light-theme');
     const overallAvgColor = isDarkNow ? '#ffffff' : '#0f172a';
+
+    // Pre-compute cumulative sums per contributor
+    const cumSums = {};
+    avgContributors.forEach(staff => { cumSums[staff] = 0; });
+
     const overallAvgData = timelineDates.map(date => {
-      const dayTotal = avgContributors.reduce((sum, staff) => sum + (staffDailyMap[staff][date] || 0), 0);
-      return parseFloat((dayTotal / avgContributors.length).toFixed(2));
+      // Advance each contributor's cumulative total
+      avgContributors.forEach(staff => {
+        cumSums[staff] += (staffDailyMap[staff][date] || 0);
+      });
+      // Average of cumulative totals across all contributors
+      const totalCum = avgContributors.reduce((sum, staff) => sum + cumSums[staff], 0);
+      return parseFloat((totalCum / avgContributors.length).toFixed(2));
     });
+
     datasets.push({
       label: `Overall Avg (${avgContributors.length} staff)`,
       data: overallAvgData,
@@ -1644,14 +1663,7 @@ function renderStaffChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            color: textColor,
-            font: { family: 'Inter', size: 11, weight: '600' },
-            usePointStyle: true,
-            boxWidth: 8
-          }
+          display: false
         },
         tooltip: {
           backgroundColor: 'rgba(12,9,25,0.95)',
@@ -1690,7 +1702,7 @@ function getWeekStartDate(dateStr) {
 }
 
 // ─── Interactive Club Filter UI Checkboxes ────────────────────────────────────
-function renderClubCardsUI(clubNames, clubWeeklyCounts, numWeeks) {
+function renderClubCardsUI(clubNames, clubWeeklyCounts, numWeeks, palette) {
   const container = document.getElementById('clubCardGrid');
   if (!container) return;
 
@@ -1700,11 +1712,15 @@ function renderClubCardsUI(clubNames, clubWeeklyCounts, numWeeks) {
   }
 
   container.innerHTML = '';
-  clubNames.forEach(clubName => {
+  clubNames.forEach((clubName, i) => {
     const weeklyData = clubWeeklyCounts[clubName] || {};
     const total = Object.values(weeklyData).reduce((sum, v) => sum + v, 0);
     const avg = total / numWeeks;
     const state = clubStateMap[clubName] || 'full';
+
+    const dotColor = state === 'ignored'
+      ? 'rgba(255,255,255,0.2)'
+      : (palette ? palette[i % palette.length] : '#00f2fe');
 
     let badgeClass = 'badge-full';
     let badgeText = 'Chart + Avg';
@@ -1724,6 +1740,7 @@ function renderClubCardsUI(clubNames, clubWeeklyCounts, numWeeks) {
     card.className = `dow-card ${cardStateClass}`;
     card.title = `Click to toggle ${clubName} state (${badgeText})`;
     card.innerHTML = `
+      <span class="card-color-dot" style="background:${dotColor};"></span>
       <div class="dow-day-name" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${clubName}">${clubName}</div>
       <div class="dow-stat-total">${total}</div>
       <div class="dow-stat-avg">Avg: ${avg.toFixed(1)}/wk</div>
@@ -1798,6 +1815,9 @@ function renderClubCheckinsChart() {
     '#ef4444',
     '#6366f1'
   ];
+
+  // Render per-club 3-state metric cards (with palette for color dots)
+  renderClubCardsUI(sortedClubNames, clubWeeklyCounts, numWeeks, palette);
 
   const datasets = [];
   const activeClubAverages = [];
@@ -1883,14 +1903,7 @@ function renderClubCheckinsChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            color: textColor,
-            font: { family: 'Inter', size: 11, weight: '600' },
-            usePointStyle: true,
-            boxWidth: 8
-          }
+          display: false
         },
         tooltip: {
           backgroundColor: 'rgba(12,9,25,0.95)',
