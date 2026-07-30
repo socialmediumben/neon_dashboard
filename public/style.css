@@ -179,33 +179,6 @@ body {
   border-radius: 14px;
 }
 
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.subpanel-container {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-glass);
-}
-
-.subpanel-title {
-  font-family: var(--font-header);
-  font-size: 0.9rem;
-  color: var(--neon-cyan);
-  margin-bottom: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.chart-container-short {
-  position: relative;
-  height: 180px;
-  width: 100%;
-}
-
 .global-date-filters {
   display: flex;
   align-items: center;

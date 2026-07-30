@@ -9,27 +9,8 @@ let sortAsc = false;
 // Chart Instances
 let eventsChartInstance = null;
 let checkinsChartInstance = null;
-let checkinsDowChartInstance = null;
 let staffChartInstance = null;
 let clubCheckinsChartInstance = null;
-
-let disabledStaffSet = new Set();
-let disabledClubsSet = new Set();
-
-function loadDisabledClubs() {
-  const saved = localStorage.getItem('neon_disabled_clubs');
-  if (saved) {
-    try {
-      disabledClubsSet = new Set(JSON.parse(saved));
-    } catch (e) {
-      disabledClubsSet = new Set();
-    }
-  }
-}
-
-function saveDisabledClubs() {
-  localStorage.setItem('neon_disabled_clubs', JSON.stringify(Array.from(disabledClubsSet)));
-}
 
 // DOM Elements
 const themeToggle = document.getElementById('themeToggle');
@@ -71,9 +52,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.2] App initializing...');
-  loadDisabledStaff();
-  loadDisabledClubs();
+  console.log('🚀 [Neon CRM Dashboard v1.5.0] App initializing...');
   setupTheme();
   setupInfoModal();
   setupSectionHelpModals();
@@ -157,7 +136,6 @@ const SECTION_DOCS = {
       <ul>
         <li><strong>Pink Line (Daily Count):</strong> Shows the exact number of check-in activities logged on each individual calendar date.</li>
         <li><strong>Dashed Cyan Line (Daily Average):</strong> Displays the mean average check-ins per day across the selected date range.</li>
-        <li><strong>📅 Day of Week Breakdown:</strong> Sub-panel bar graph summarizing check-in totals grouped by day of the week (Mon-Sun).</li>
         <li><strong>Filtering:</strong> Filterable by custom date range or relative time presets.</li>
       </ul>
     `
@@ -181,9 +159,8 @@ const SECTION_DOCS = {
       <p>This weekly trend graph focuses on activities containing the phrase <strong>"Club Check-In"</strong> (e.g. <em>Cosplay Club Check-In</em>, <em>Teen Club Check-In</em>).</p>
       <ul>
         <li><strong>Weekly Buckets:</strong> The X-axis truncates date intervals into weekly units starting on Mondays (e.g. <code>Week of 7/6</code>).</li>
-        <li><strong>Per-Club Lines & Averages:</strong> Each club gets a solid weekly trend line and a matching dashed average line in its assigned color.</li>
-        <li><strong>Overall Average Line:</strong> A bold Black/White line representing the combined mean average weekly check-ins across all active clubs.</li>
-        <li><strong>Interactive Club Checkboxes:</strong> Toggle individual clubs on or off using the checkboxes above the chart (preferences saved in browser storage).</li>
+        <li><strong>Per-Club Lines:</strong> Each club activity subject is grouped into a distinct colored line showing weekly attendance/activity instances.</li>
+        <li><strong>Filtering:</strong> Filterable by date range and relative time presets.</li>
       </ul>
     `
   },
@@ -676,120 +653,33 @@ function resetGlobalDatesAllCharts() {
   showToast('Reset date range to All Time', 'info');
 }
 
-// ─── Header Action Handlers (Print, Save Config, Load Config, Refresh) ───────
+// ─── Header Action Handlers (Print, Save Config, Load Config) ────────────────
 function setupHeaderActions() {
   const printBtn = document.getElementById('printReportBtn');
   if (printBtn) {
     printBtn.addEventListener('click', () => window.print());
   }
-
-  const refreshBtn = document.getElementById('refreshDataBtn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', async () => {
-      showToast('Refreshing live data from Neon CRM API...', 'info');
-      refreshBtn.disabled = true;
-      try {
-        await loadData();
-        await loadCharts();
-        showToast('Data refreshed successfully!', 'success');
-      } catch (err) {
-        showToast(`Refresh failed: ${err.message}`, 'error');
-      } finally {
-        refreshBtn.disabled = false;
-      }
-    });
-  }
 }
 
-// ─── Config Sharing (App Browser Storage & JSON File Export/Import) ─────────
+// ─── Config Sharing (Export/Import JSON) ────────────────────────────────────
 function setupConfigSharing() {
   const saveConfigBtn = document.getElementById('saveConfigBtn');
   const loadConfigBtn = document.getElementById('loadConfigBtn');
   const configFileInput = document.getElementById('configFileInput');
-  const modal = document.getElementById('configChoiceModal');
-  const closeBtn = document.getElementById('closeConfigChoiceBtn');
-  const saveOptions = document.getElementById('saveOptions');
-  const loadOptions = document.getElementById('loadOptions');
-  const title = document.getElementById('configChoiceTitle');
-
-  const saveToAppBtn = document.getElementById('saveToAppBtn');
-  const saveToJsonBtn = document.getElementById('saveToJsonBtn');
-  const loadFromAppBtn = document.getElementById('loadFromAppBtn');
-  const loadFromJsonBtn = document.getElementById('loadFromJsonBtn');
 
   if (saveConfigBtn) {
-    saveConfigBtn.addEventListener('click', () => {
-      title.textContent = '💾 Save Report Configuration';
-      saveOptions.classList.remove('hidden');
-      loadOptions.classList.add('hidden');
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-    });
+    saveConfigBtn.addEventListener('click', exportReportConfigJson);
   }
 
-  if (loadConfigBtn) {
-    loadConfigBtn.addEventListener('click', () => {
-      title.textContent = '📂 Load Report Configuration';
-      loadOptions.classList.remove('hidden');
-      saveOptions.classList.add('hidden');
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-    });
-  }
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    });
-  }
-
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-    });
-  }
-
-  if (saveToAppBtn) {
-    saveToAppBtn.addEventListener('click', () => {
-      saveConfigToApp();
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    });
-  }
-
-  if (saveToJsonBtn) {
-    saveToJsonBtn.addEventListener('click', () => {
-      exportReportConfigJson();
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    });
-  }
-
-  if (loadFromAppBtn) {
-    loadFromAppBtn.addEventListener('click', () => {
-      loadConfigFromApp();
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    });
-  }
-
-  if (loadFromJsonBtn && configFileInput) {
-    loadFromJsonBtn.addEventListener('click', () => {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      configFileInput.click();
-    });
+  if (loadConfigBtn && configFileInput) {
+    loadConfigBtn.addEventListener('click', () => configFileInput.click());
     configFileInput.addEventListener('change', importReportConfigJson);
   }
 }
 
-function getReportConfigData() {
-  return {
-    version: '1.6.0',
+function exportReportConfigJson() {
+  const configData = {
+    version: '1.5.0',
     exportedAt: new Date().toISOString(),
     globalDate: {
       preset: document.getElementById('globalPreset')?.value || 'custom',
@@ -819,7 +709,6 @@ function getReportConfigData() {
       }
     },
     disabledStaff: Array.from(disabledStaffSet),
-    disabledClubs: Array.from(disabledClubsSet),
     tableFilters: {
       search: document.getElementById('tableSearch')?.value || '',
       exclude: document.getElementById('tableExclude')?.value || 'Check-In',
@@ -827,72 +716,7 @@ function getReportConfigData() {
       priority: document.getElementById('filterPriority')?.value || ''
     }
   };
-}
 
-function applyReportConfigData(config) {
-  if (config.globalDate) {
-    if (document.getElementById('globalPreset')) document.getElementById('globalPreset').value = config.globalDate.preset || 'custom';
-    if (document.getElementById('globalAfter')) document.getElementById('globalAfter').value = config.globalDate.after || '';
-    if (document.getElementById('globalBefore')) document.getElementById('globalBefore').value = config.globalDate.before || '';
-  }
-
-  if (config.charts) {
-    Object.keys(config.charts).forEach(prefix => {
-      const item = config.charts[prefix];
-      if (document.getElementById(`${prefix}Preset`)) document.getElementById(`${prefix}Preset`).value = item.preset || 'custom';
-      if (document.getElementById(`${prefix}After`)) document.getElementById(`${prefix}After`).value = item.after || '';
-      if (document.getElementById(`${prefix}Before`)) document.getElementById(`${prefix}Before`).value = item.before || '';
-    });
-  }
-
-  if (Array.isArray(config.disabledStaff)) {
-    disabledStaffSet = new Set(config.disabledStaff);
-    saveDisabledStaff();
-  }
-
-  if (Array.isArray(config.disabledClubs)) {
-    disabledClubsSet = new Set(config.disabledClubs);
-    saveDisabledClubs();
-  }
-
-  if (config.tableFilters) {
-    if (document.getElementById('tableSearch')) document.getElementById('tableSearch').value = config.tableFilters.search || '';
-    if (document.getElementById('tableExclude')) document.getElementById('tableExclude').value = config.tableFilters.exclude || '';
-    if (document.getElementById('filterStatus')) document.getElementById('filterStatus').value = config.tableFilters.status || '';
-    if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
-  }
-
-  loadEventsChart();
-  renderCheckinsChart();
-  renderStaffChart();
-  renderClubCheckinsChart();
-  filterAndRenderTable();
-}
-
-function saveConfigToApp() {
-  const configData = getReportConfigData();
-  localStorage.setItem('neon_app_config', JSON.stringify(configData));
-  showToast('Saved report configuration to App (Browser Storage)!', 'success');
-}
-
-function loadConfigFromApp() {
-  const saved = localStorage.getItem('neon_app_config');
-  if (!saved) {
-    showToast('No saved configuration found in App storage. Save a configuration first!', 'error');
-    return;
-  }
-  try {
-    const config = JSON.parse(saved);
-    applyReportConfigData(config);
-    showToast('Successfully loaded configuration from App storage!', 'success');
-  } catch (err) {
-    console.error('Failed to parse saved app config:', err);
-    showToast(`Error loading saved config: ${err.message}`, 'error');
-  }
-}
-
-function exportReportConfigJson() {
-  const configData = getReportConfigData();
   const jsonStr = JSON.stringify(configData, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -914,12 +738,51 @@ function importReportConfigJson(e) {
   reader.onload = (event) => {
     try {
       const config = JSON.parse(event.target.result);
-      applyReportConfigData(config);
+      
+      // Apply global date
+      if (config.globalDate) {
+        if (document.getElementById('globalPreset')) document.getElementById('globalPreset').value = config.globalDate.preset || 'custom';
+        if (document.getElementById('globalAfter')) document.getElementById('globalAfter').value = config.globalDate.after || '';
+        if (document.getElementById('globalBefore')) document.getElementById('globalBefore').value = config.globalDate.before || '';
+      }
+
+      // Apply per-chart dates
+      if (config.charts) {
+        Object.keys(config.charts).forEach(prefix => {
+          const item = config.charts[prefix];
+          if (document.getElementById(`${prefix}Preset`)) document.getElementById(`${prefix}Preset`).value = item.preset || 'custom';
+          if (document.getElementById(`${prefix}After`)) document.getElementById(`${prefix}After`).value = item.after || '';
+          if (document.getElementById(`${prefix}Before`)) document.getElementById(`${prefix}Before`).value = item.before || '';
+        });
+      }
+
+      // Apply disabled staff
+      if (Array.isArray(config.disabledStaff)) {
+        disabledStaffSet = new Set(config.disabledStaff);
+        saveDisabledStaff();
+      }
+
+      // Apply table filters
+      if (config.tableFilters) {
+        if (document.getElementById('tableSearch')) document.getElementById('tableSearch').value = config.tableFilters.search || '';
+        if (document.getElementById('tableExclude')) document.getElementById('tableExclude').value = config.tableFilters.exclude || '';
+        if (document.getElementById('filterStatus')) document.getElementById('filterStatus').value = config.tableFilters.status || '';
+        if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
+      }
+
+      // Reload all charts and table
+      loadEventsChart();
+      renderCheckinsChart();
+      renderStaffChart();
+      renderClubCheckinsChart();
+      filterAndRenderTable();
+
       showToast('Successfully loaded report configuration!', 'success');
     } catch (err) {
       console.error('Failed to parse config JSON:', err);
       showToast(`Invalid config JSON file: ${err.message}`, 'error');
     }
+    // Reset file input value so user can re-select same file if needed
     e.target.value = '';
   };
   reader.readAsText(file);
@@ -1128,92 +991,10 @@ function renderCheckinsChart() {
       }
     }
   });
-
-  // Render Day of Week Breakdown Sub-chart
-  renderCheckinsDowChart(checkins);
-}
-
-// ─── Check-Ins Day of Week Breakdown Chart ──────────────────────────────────
-function renderCheckinsDowChart(checkins) {
-  const dowCounts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-  const dowKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  checkins.forEach(a => {
-    if (!a['Activity Date']) return;
-    const d = new Date(a['Activity Date'] + 'T00:00:00');
-    if (isNaN(d.getTime())) return;
-    const dayName = dowKeys[d.getDay()];
-    if (dowCounts[dayName] !== undefined) {
-      dowCounts[dayName]++;
-    }
-  });
-
-  const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const dowData = dowLabels.map(l => dowCounts[l]);
-
-  const container = document.getElementById('checkinsDowChart').parentElement;
-  container.innerHTML = '<canvas id="checkinsDowChart"></canvas>';
-  const ctx = document.getElementById('checkinsDowChart').getContext('2d');
-
-  if (checkinsDowChartInstance) checkinsDowChartInstance.destroy();
-
-  const isDark = !document.body.classList.contains('light-theme');
-  const textColor = isDark ? '#a0aec0' : '#334155';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
-
-  checkinsDowChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: dowLabels,
-      datasets: [{
-        label: 'Check-Ins',
-        data: dowData,
-        backgroundColor: 'rgba(255, 0, 127, 0.75)',
-        borderColor: '#ff007f',
-        borderWidth: 1,
-        borderRadius: 4,
-        hoverBackgroundColor: 'rgba(255, 0, 127, 0.95)'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(12,9,25,0.95)',
-          titleColor: '#ff007f',
-          bodyColor: '#a0aec0',
-          borderColor: 'rgba(255,0,127,0.2)',
-          borderWidth: 1
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: textColor, font: { family: 'Inter', size: 10 } },
-          grid: { color: gridColor }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: { color: textColor, font: { family: 'Inter', size: 10 }, stepSize: 1 },
-          grid: { color: gridColor }
-        }
-      }
-    }
-  });
 }
 
 // ─── Staff Filter & Multi-Staff Attribution Helpers ─────────────────────────
-function loadDisabledStaff() {
-  const saved = localStorage.getItem('neon_disabled_staff');
-  if (saved) {
-    try {
-      disabledStaffSet = new Set(JSON.parse(saved));
-    } catch (e) {
-      disabledStaffSet = new Set();
-    }
-  }
-}
+let disabledStaffSet = new Set(JSON.parse(localStorage.getItem('neon_disabled_staff') || '[]'));
 
 function saveDisabledStaff() {
   localStorage.setItem('neon_disabled_staff', JSON.stringify([...disabledStaffSet]));
@@ -1470,41 +1251,6 @@ function getWeekStartDate(dateStr) {
   const m = String(mon.getMonth() + 1).padStart(2, '0');
   const dy = String(mon.getDate()).padStart(2, '0');
   return `${y}-${m}-${dy}`;
-// ─── Interactive Club Filter UI Checkboxes ────────────────────────────────────
-function updateClubFilterUI(allClubs) {
-  const container = document.getElementById('clubFilterBar');
-  if (!container) return;
-
-  if (allClubs.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = '<span class="filter-bar-title">Clubs:</span>';
-
-  allClubs.forEach(club => {
-    const isChecked = !disabledClubsSet.has(club);
-    const label = document.createElement('label');
-    label.className = 'staff-checkbox-item';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = isChecked;
-
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        disabledClubsSet.delete(club);
-      } else {
-        disabledClubsSet.add(club);
-      }
-      saveDisabledClubs();
-      renderClubCheckinsChart();
-    });
-
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(` ${club}`));
-    container.appendChild(label);
-  });
 }
 
 // ─── Chart 4: Club Check-Ins Weekly Multi-Line Chart ─────────────────────────
@@ -1542,11 +1288,6 @@ function renderClubCheckinsChart() {
   const sortedWeekStarts = Array.from(weekStartDatesSet).sort();
   const sortedClubNames = Array.from(clubNamesSet).sort();
 
-  // Render per-club filter checkboxes
-  updateClubFilterUI(sortedClubNames);
-
-  const activeClubNames = sortedClubNames.filter(name => !disabledClubsSet.has(name));
-
   // Format week labels as "Week of M/D"
   const weekLabels = sortedWeekStarts.map(wStr => {
     const parts = wStr.split('-');
@@ -1567,19 +1308,12 @@ function renderClubCheckinsChart() {
     '#6366f1'
   ];
 
-  const datasets = [];
-  let totalActiveWeeklyCheckins = 0;
-  const numWeeks = sortedWeekStarts.length || 1;
-
-  activeClubNames.forEach((clubName, i) => {
+  // Build dataset per club name
+  const datasets = sortedClubNames.map((clubName, i) => {
     const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
-    const clubTotal = data.reduce((sum, v) => sum + v, 0);
-    const clubAvg = clubTotal / numWeeks;
-    totalActiveWeeklyCheckins += clubTotal;
     const color = palette[i % palette.length];
 
-    // 1) Main weekly trend line
-    datasets.push({
+    return {
       label: clubName,
       data,
       borderColor: color,
@@ -1590,38 +1324,10 @@ function renderClubCheckinsChart() {
       fill: false,
       tension: 0.3,
       borderWidth: 2
-    });
-
-    // 2) Per-Club Average Line (dashed, matching club color)
-    datasets.push({
-      label: `${clubName} Avg (${clubAvg.toFixed(1)}/wk)`,
-      data: sortedWeekStarts.map(() => clubAvg),
-      borderColor: color,
-      borderDash: [5, 5],
-      pointRadius: 0,
-      fill: false,
-      borderWidth: 1.5
-    });
+    };
   });
 
-  const isDark = !document.body.classList.contains('light-theme');
-  const overallColor = isDark ? '#ffffff' : '#0f172a';
-  const overallWeeklyAvg = activeClubNames.length > 0 ? (totalActiveWeeklyCheckins / numWeeks) : 0;
-
-  // 3) Overall Average Line across all active clubs (Black in light mode, White in dark mode)
-  if (activeClubNames.length > 0) {
-    datasets.push({
-      label: `Overall Average (${overallWeeklyAvg.toFixed(1)}/wk)`,
-      data: sortedWeekStarts.map(() => overallWeeklyAvg),
-      borderColor: overallColor,
-      borderWidth: 2.5,
-      borderDash: [8, 4],
-      pointRadius: 0,
-      fill: false
-    });
-  }
-
-  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} datasets for ${activeClubNames.length} active clubs across ${sortedWeekStarts.length} weeks.`);
+  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} club lines across ${sortedWeekStarts.length} weeks.`);
 
   const container = document.getElementById('clubCheckinsChart').parentElement;
   container.innerHTML = '<canvas id="clubCheckinsChart"></canvas>';
@@ -1629,6 +1335,7 @@ function renderClubCheckinsChart() {
 
   if (clubCheckinsChartInstance) clubCheckinsChartInstance.destroy();
 
+  const isDark = !document.body.classList.contains('light-theme');
   const textColor = isDark ? '#a0aec0' : '#334155';
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 
