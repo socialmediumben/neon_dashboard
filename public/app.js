@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.3] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.4] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -1454,14 +1454,14 @@ function renderClubCheckinsChart() {
   ];
 
   const datasets = [];
-  let totalActiveWeeklyCheckins = 0;
+  const activeClubAverages = [];
   const numWeeks = sortedWeekStarts.length || 1;
 
   activeClubNames.forEach((clubName, i) => {
     const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
     const clubTotal = data.reduce((sum, v) => sum + v, 0);
     const clubAvg = clubTotal / numWeeks;
-    totalActiveWeeklyCheckins += clubTotal;
+    activeClubAverages.push(clubAvg);
     const color = palette[i % palette.length];
 
     // 1) Main weekly trend line
@@ -1492,7 +1492,9 @@ function renderClubCheckinsChart() {
 
   const isDarkTheme = !document.body.classList.contains('light-theme');
   const overallColor = isDarkTheme ? '#ffffff' : '#0f172a';
-  const overallWeeklyAvg = activeClubNames.length > 0 ? (totalActiveWeeklyCheckins / numWeeks) : 0;
+  const overallWeeklyAvg = activeClubAverages.length > 0 
+    ? (activeClubAverages.reduce((sum, a) => sum + a, 0) / activeClubAverages.length) 
+    : 0;
 
   // 3) Overall Average Line across all active clubs (Black in light mode, White in dark mode)
   if (activeClubNames.length > 0) {
