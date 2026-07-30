@@ -10,6 +10,7 @@ let sortAsc = false;
 let eventsChartInstance = null;
 let checkinsChartInstance = null;
 let staffChartInstance = null;
+let clubCheckinsChartInstance = null;
 
 // DOM Elements
 const themeToggle = document.getElementById('themeToggle');
@@ -284,9 +285,10 @@ async function loadData() {
     currentPage = 1;
     filterAndRenderTable();
 
-    // Render client-side charts (checkins + staff) from activities data
+    // Render client-side charts (checkins + staff + club checkins) from activities data
     renderCheckinsChart();
     renderStaffChart();
+    renderClubCheckinsChart();
   } catch (err) {
     console.error('❌ [Data] Failed to load activities:', err);
     showToast(`Failed to load activities: ${err.message}`, 'error');
@@ -445,6 +447,7 @@ function setupChartFilters() {
   bindPresetAndInputs('eventsPreset', 'eventsAfter', 'eventsBefore', () => loadEventsChart());
   bindPresetAndInputs('checkinsPreset', 'checkinsAfter', 'checkinsBefore', () => renderCheckinsChart());
   bindPresetAndInputs('staffPreset', 'staffAfter', 'staffBefore', () => renderStaffChart());
+  bindPresetAndInputs('clubCheckinsPreset', 'clubCheckinsAfter', 'clubCheckinsBefore', () => renderClubCheckinsChart());
 
   // Events Attendance chart filters
   document.getElementById('applyEventsFilter').addEventListener('click', () => loadEventsChart());
@@ -474,6 +477,16 @@ function setupChartFilters() {
     const preset = document.getElementById('staffPreset');
     if (preset) preset.value = 'custom';
     renderStaffChart();
+  });
+
+  // Club Check-Ins bar chart filters (client-side from activities array)
+  document.getElementById('applyClubCheckinsFilter').addEventListener('click', () => renderClubCheckinsChart());
+  document.getElementById('clearClubCheckinsFilter').addEventListener('click', () => {
+    document.getElementById('clubCheckinsAfter').value = '';
+    document.getElementById('clubCheckinsBefore').value = '';
+    const preset = document.getElementById('clubCheckinsPreset');
+    if (preset) preset.value = 'custom';
+    renderClubCheckinsChart();
   });
 }
 
@@ -829,6 +842,99 @@ function renderStaffChart() {
         },
         y: {
           ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
+          grid: { color: gridColor }
+        }
+      }
+    }
+  });
+}
+
+// ─── Chart 4: Club Check-Ins Bar Chart ───────────────────────────────────────
+function renderClubCheckinsChart() {
+  const after = document.getElementById('clubCheckinsAfter').value;
+  const before = document.getElementById('clubCheckinsBefore').value;
+
+  // Filter activities to subject or type containing "club check-in" (case-insensitive)
+  let clubCheckins = activities.filter(a => {
+    const subject = (a['Activity Subject'] || '').toLowerCase();
+    const type = (a['Activity Type'] || '').toLowerCase();
+    return subject.includes('club check-in') || type.includes('club check-in');
+  });
+
+  if (after) clubCheckins = clubCheckins.filter(a => a['Activity Date'] >= after);
+  if (before) clubCheckins = clubCheckins.filter(a => a['Activity Date'] <= before);
+
+  // Group by exact Activity Subject (e.g. "Cosplay Club Check-In")
+  const counts = {};
+  clubCheckins.forEach(a => {
+    const name = (a['Activity Subject'] || 'Other Club Check-In').trim();
+    counts[name] = (counts[name] || 0) + 1;
+  });
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(([name]) => name);
+  const values = sorted.map(([, count]) => count);
+
+  console.log(`♣️ [Club Check-Ins Chart] Rendering ${labels.length} distinct club check-in types.`);
+
+  const palette = [
+    'rgba(16, 185, 129, 0.75)',
+    'rgba(0, 242, 254, 0.75)',
+    'rgba(255, 0, 127, 0.75)',
+    'rgba(157, 78, 221, 0.75)',
+    'rgba(245, 158, 11, 0.75)',
+    'rgba(59, 130, 246, 0.75)',
+    'rgba(239, 68, 68, 0.75)',
+    'rgba(99, 102, 241, 0.75)'
+  ];
+
+  const container = document.getElementById('clubCheckinsChart').parentElement;
+  container.innerHTML = '<canvas id="clubCheckinsChart"></canvas>';
+  const ctx = document.getElementById('clubCheckinsChart').getContext('2d');
+
+  if (clubCheckinsChartInstance) clubCheckinsChartInstance.destroy();
+
+  const isDark = !document.body.classList.contains('light-theme');
+  const textColor = isDark ? '#a0aec0' : '#334155';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+
+  clubCheckinsChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => l.length > 32 ? l.substring(0, 30) + '…' : l),
+      datasets: [{
+        label: 'Instances',
+        data: values,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+        borderColor: labels.map((_, i) => palette[i % palette.length].replace('0.75', '1')),
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => labels[items[0].dataIndex]
+          },
+          backgroundColor: 'rgba(12,9,25,0.95)',
+          titleColor: '#10b981',
+          bodyColor: '#a0aec0',
+          borderColor: 'rgba(16,185,129,0.2)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, maxRotation: 45 },
+          grid: { color: gridColor }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
           grid: { color: gridColor }
         }
       }
