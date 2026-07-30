@@ -18,6 +18,7 @@ const infoBtn = document.getElementById('infoBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
 const tableSearch = document.getElementById('tableSearch');
+const tableExclude = document.getElementById('tableExclude');
 const filterStatus = document.getElementById('filterStatus');
 const filterPriority = document.getElementById('filterPriority');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
@@ -51,14 +52,16 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.4.1] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.5.0] App initializing...');
   setupTheme();
   setupInfoModal();
+  setupSectionHelpModals();
   setupTabs();
   setupEventListeners();
   setupChartFilters();
   setupGlobalDateFilters();
   setupHeaderActions();
+  setupConfigSharing();
   checkAppStatus().then(() => {
     loadData();
     loadCharts();
@@ -107,6 +110,108 @@ function setupInfoModal() {
     if (e.target === infoModal) {
       infoModal.classList.remove('open');
       infoModal.setAttribute('aria-hidden', 'true');
+    }
+  });
+}
+
+// ─── Section Documentation Content & Pop-up Modal ───────────────────────────
+const SECTION_DOCS = {
+  events: {
+    title: '🎟️ Event Attendance Report Details',
+    content: `
+      <h5>Data Source & Processing</h5>
+      <p>This report queries Neon CRM's <code>events/search</code> API endpoint (via <code>/api/events</code>).</p>
+      <ul>
+        <li><strong>Included Data:</strong> All registered CRM events with start dates falling within the selected date range.</li>
+        <li><strong>Metrics Shown:</strong> Event Name, Event Start Date, and Total Registered Attendees.</li>
+        <li><strong>Filtering:</strong> Filterable by custom date pickers or quick relative time presets (Today, Week, Month, Quarter, Year).</li>
+      </ul>
+    `
+  },
+  checkins: {
+    title: '📍 Check-Ins Over Time Report Details',
+    content: `
+      <h5>Data Source & Processing</h5>
+      <p>This line graph analyzes logged activities in Neon CRM whose subject or type contains the word <strong>"Check-In"</strong>.</p>
+      <ul>
+        <li><strong>Pink Line (Daily Count):</strong> Shows the exact number of check-in activities logged on each individual calendar date.</li>
+        <li><strong>Dashed Cyan Line (Daily Average):</strong> Displays the mean average check-ins per day across the selected date range.</li>
+        <li><strong>Filtering:</strong> Filterable by custom date range or relative time presets.</li>
+      </ul>
+    `
+  },
+  staff: {
+    title: '👥 Activities by Staff Member Report Details',
+    content: `
+      <h5>Data Source & Processing</h5>
+      <p>This multi-line progress graph tracks activities attributed to system staff members over time.</p>
+      <ul>
+        <li><strong>Multi-Staff Attribution:</strong> Activities with multiple staff members in <em>Created By</em> (e.g. "John Doe, Jane Smith") are attributed to each staff member individually.</li>
+        <li><strong>Cumulative Sum:</strong> The Y-axis tracks running cumulative total activities. Lines plateau or rise over time, smoothing out data to visualize staff progress.</li>
+        <li><strong>Interactive Staff Checkboxes:</strong> Check or uncheck staff members above the chart to toggle individual lines. Selections persist in browser storage.</li>
+      </ul>
+    `
+  },
+  clubCheckins: {
+    title: '♣️ Club Check-Ins by Club Report Details',
+    content: `
+      <h5>Data Source & Processing</h5>
+      <p>This weekly trend graph focuses on activities containing the phrase <strong>"Club Check-In"</strong> (e.g. <em>Cosplay Club Check-In</em>, <em>Teen Club Check-In</em>).</p>
+      <ul>
+        <li><strong>Weekly Buckets:</strong> The X-axis truncates date intervals into weekly units starting on Mondays (e.g. <code>Week of 7/6</code>).</li>
+        <li><strong>Per-Club Lines:</strong> Each club activity subject is grouped into a distinct colored line showing weekly attendance/activity instances.</li>
+        <li><strong>Filtering:</strong> Filterable by date range and relative time presets.</li>
+      </ul>
+    `
+  },
+  ledger: {
+    title: '📋 Activity Ledger Report Details',
+    content: `
+      <h5>Data Source & Processing</h5>
+      <p>The Activity Ledger displays raw CRM activity records for granular exploration.</p>
+      <ul>
+        <li><strong>Exclusion Filter:</strong> By default, check-in activities are excluded using the typed exclusion box (<code>🚫 Exclude phrase...</code>) so the ledger focuses on core task notes.</li>
+        <li><strong>Real-time Features:</strong> Instant subject/notes search, status filter, priority filter, table column sorting, pagination, and CSV data export.</li>
+      </ul>
+    `
+  }
+};
+
+function setupSectionHelpModals() {
+  const sectionHelpBtns = document.querySelectorAll('.section-help-btn');
+  const helpModal = document.getElementById('sectionHelpModal');
+  const closeHelpBtn = document.getElementById('closeSectionHelpBtn');
+  const helpTitle = document.getElementById('helpModalTitle');
+  const helpContent = document.getElementById('helpModalContent');
+
+  if (!helpModal) return;
+
+  sectionHelpBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const section = btn.dataset.section;
+      const doc = SECTION_DOCS[section];
+
+      if (doc) {
+        helpTitle.textContent = doc.title;
+        helpContent.innerHTML = doc.content;
+        helpModal.classList.add('open');
+        helpModal.setAttribute('aria-hidden', 'false');
+      }
+    });
+  });
+
+  if (closeHelpBtn) {
+    closeHelpBtn.addEventListener('click', () => {
+      helpModal.classList.remove('open');
+      helpModal.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  helpModal.addEventListener('click', (e) => {
+    if (e.target === helpModal) {
+      helpModal.classList.remove('open');
+      helpModal.setAttribute('aria-hidden', 'true');
     }
   });
 }
@@ -548,22 +653,139 @@ function resetGlobalDatesAllCharts() {
   showToast('Reset date range to All Time', 'info');
 }
 
-// ─── Header Action Handlers (Print, Email, Save) ─────────────────────────────
+// ─── Header Action Handlers (Print, Save Config, Load Config) ────────────────
 function setupHeaderActions() {
   const printBtn = document.getElementById('printReportBtn');
   if (printBtn) {
     printBtn.addEventListener('click', () => window.print());
   }
+}
 
-  const emailBtn = document.getElementById('emailDigestBtn');
-  if (emailBtn) {
-    emailBtn.addEventListener('click', handleSendTestEmail);
+// ─── Config Sharing (Export/Import JSON) ────────────────────────────────────
+function setupConfigSharing() {
+  const saveConfigBtn = document.getElementById('saveConfigBtn');
+  const loadConfigBtn = document.getElementById('loadConfigBtn');
+  const configFileInput = document.getElementById('configFileInput');
+
+  if (saveConfigBtn) {
+    saveConfigBtn.addEventListener('click', exportReportConfigJson);
   }
 
-  const saveBtn = document.getElementById('saveCsvBtn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', exportToCsv);
+  if (loadConfigBtn && configFileInput) {
+    loadConfigBtn.addEventListener('click', () => configFileInput.click());
+    configFileInput.addEventListener('change', importReportConfigJson);
   }
+}
+
+function exportReportConfigJson() {
+  const configData = {
+    version: '1.5.0',
+    exportedAt: new Date().toISOString(),
+    globalDate: {
+      preset: document.getElementById('globalPreset')?.value || 'custom',
+      after: document.getElementById('globalAfter')?.value || '',
+      before: document.getElementById('globalBefore')?.value || ''
+    },
+    charts: {
+      events: {
+        preset: document.getElementById('eventsPreset')?.value || 'custom',
+        after: document.getElementById('eventsAfter')?.value || '',
+        before: document.getElementById('eventsBefore')?.value || ''
+      },
+      checkins: {
+        preset: document.getElementById('checkinsPreset')?.value || 'custom',
+        after: document.getElementById('checkinsAfter')?.value || '',
+        before: document.getElementById('checkinsBefore')?.value || ''
+      },
+      staff: {
+        preset: document.getElementById('staffPreset')?.value || 'custom',
+        after: document.getElementById('staffAfter')?.value || '',
+        before: document.getElementById('staffBefore')?.value || ''
+      },
+      clubCheckins: {
+        preset: document.getElementById('clubCheckinsPreset')?.value || 'custom',
+        after: document.getElementById('clubCheckinsAfter')?.value || '',
+        before: document.getElementById('clubCheckinsBefore')?.value || ''
+      }
+    },
+    disabledStaff: Array.from(disabledStaffSet),
+    tableFilters: {
+      search: document.getElementById('tableSearch')?.value || '',
+      exclude: document.getElementById('tableExclude')?.value || 'Check-In',
+      status: document.getElementById('filterStatus')?.value || '',
+      priority: document.getElementById('filterPriority')?.value || ''
+    }
+  };
+
+  const jsonStr = JSON.stringify(configData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `neon_report_config_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast('Exported report configuration JSON file!', 'success');
+}
+
+function importReportConfigJson(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const config = JSON.parse(event.target.result);
+      
+      // Apply global date
+      if (config.globalDate) {
+        if (document.getElementById('globalPreset')) document.getElementById('globalPreset').value = config.globalDate.preset || 'custom';
+        if (document.getElementById('globalAfter')) document.getElementById('globalAfter').value = config.globalDate.after || '';
+        if (document.getElementById('globalBefore')) document.getElementById('globalBefore').value = config.globalDate.before || '';
+      }
+
+      // Apply per-chart dates
+      if (config.charts) {
+        Object.keys(config.charts).forEach(prefix => {
+          const item = config.charts[prefix];
+          if (document.getElementById(`${prefix}Preset`)) document.getElementById(`${prefix}Preset`).value = item.preset || 'custom';
+          if (document.getElementById(`${prefix}After`)) document.getElementById(`${prefix}After`).value = item.after || '';
+          if (document.getElementById(`${prefix}Before`)) document.getElementById(`${prefix}Before`).value = item.before || '';
+        });
+      }
+
+      // Apply disabled staff
+      if (Array.isArray(config.disabledStaff)) {
+        disabledStaffSet = new Set(config.disabledStaff);
+        saveDisabledStaff();
+      }
+
+      // Apply table filters
+      if (config.tableFilters) {
+        if (document.getElementById('tableSearch')) document.getElementById('tableSearch').value = config.tableFilters.search || '';
+        if (document.getElementById('tableExclude')) document.getElementById('tableExclude').value = config.tableFilters.exclude || '';
+        if (document.getElementById('filterStatus')) document.getElementById('filterStatus').value = config.tableFilters.status || '';
+        if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
+      }
+
+      // Reload all charts and table
+      loadEventsChart();
+      renderCheckinsChart();
+      renderStaffChart();
+      renderClubCheckinsChart();
+      filterAndRenderTable();
+
+      showToast('Successfully loaded report configuration!', 'success');
+    } catch (err) {
+      console.error('Failed to parse config JSON:', err);
+      showToast(`Invalid config JSON file: ${err.message}`, 'error');
+    }
+    // Reset file input value so user can re-select same file if needed
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ─── Load All Charts ────────────────────────────────────────────────────────
@@ -693,6 +915,8 @@ function renderCheckinsChart() {
   });
 
   const sortedDates = Object.keys(counts).sort();
+  const totalCount = sortedDates.reduce((sum, d) => sum + counts[d], 0);
+  const avg = sortedDates.length > 0 ? (totalCount / sortedDates.length) : 0;
 
   const container = document.getElementById('checkinsChart').parentElement;
   container.innerHTML = '<canvas id="checkinsChart"></canvas>';
@@ -708,24 +932,44 @@ function renderCheckinsChart() {
     type: 'line',
     data: {
       labels: sortedDates,
-      datasets: [{
-        label: 'Check-Ins',
-        data: sortedDates.map(d => counts[d]),
-        borderColor: '#ff007f',
-        backgroundColor: 'rgba(255, 0, 127, 0.12)',
-        pointBackgroundColor: '#ff007f',
-        pointRadius: 4,
-        pointHoverRadius: 7,
-        fill: true,
-        tension: 0.4,
-        borderWidth: 2
-      }]
+      datasets: [
+        {
+          label: 'Check-Ins',
+          data: sortedDates.map(d => counts[d]),
+          borderColor: '#ff007f',
+          backgroundColor: 'rgba(255, 0, 127, 0.12)',
+          pointBackgroundColor: '#ff007f',
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2
+        },
+        {
+          label: `Daily Average (${avg.toFixed(1)}/day)`,
+          data: sortedDates.map(() => avg),
+          borderColor: '#00f2fe',
+          borderDash: [6, 6],
+          pointRadius: 0,
+          fill: false,
+          borderWidth: 2
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: textColor,
+            font: { family: 'Inter', size: 11, weight: '600' },
+            usePointStyle: true,
+            boxWidth: 8
+          }
+        },
         tooltip: {
           backgroundColor: 'rgba(12,9,25,0.95)',
           titleColor: '#ff007f',
@@ -1140,16 +1384,17 @@ function renderClubCheckinsChart() {
 
 // Filter, sort, and paginate the local dataset
 function filterAndRenderTable() {
-  const searchVal = tableSearch.value.toLowerCase().trim();
-  const statusVal = filterStatus.value;
-  const priorityVal = filterPriority.value;
+  const searchVal = tableSearch ? tableSearch.value.toLowerCase().trim() : '';
+  const excludeVal = tableExclude ? tableExclude.value.toLowerCase().trim() : 'check-in';
+  const statusVal = filterStatus ? filterStatus.value : '';
+  const priorityVal = filterPriority ? filterPriority.value : '';
 
   filteredActivities = activities.filter(a => {
     const subjectLower = (a['Activity Subject'] || '').toLowerCase();
     const typeLower = (a['Activity Type'] || '').toLowerCase();
 
-    // Exclude "Club Check-In" activities from Activity Ledger table
-    if (subjectLower.includes('club check-in') || typeLower.includes('club check-in')) {
+    // Typed exclusion phrase check (e.g. "check-in")
+    if (excludeVal && (subjectLower.includes(excludeVal) || typeLower.includes(excludeVal))) {
       return false;
     }
 

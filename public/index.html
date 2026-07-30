@@ -30,44 +30,18 @@
       </div>
 
       <div class="header-controls">
-        <!-- Global Date Range Controls -->
-        <div class="global-date-filters">
-          <span class="global-filter-label">Global Date:</span>
-          <select id="globalPreset" class="filter-select date-preset-select" aria-label="Global Relative Time Preset">
-            <option value="custom">Custom Range</option>
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="tomorrow">Tomorrow</option>
-            <option value="this_week">This Week</option>
-            <option value="last_week">Last Week</option>
-            <option value="next_week">Next Week</option>
-            <option value="this_month">This Month</option>
-            <option value="last_month">Last Month</option>
-            <option value="next_month">Next Month</option>
-            <option value="this_quarter">This Quarter</option>
-            <option value="last_quarter">Last Quarter</option>
-            <option value="next_quarter">Next Quarter</option>
-            <option value="this_year">This Year</option>
-            <option value="last_year">Last Year</option>
-            <option value="next_year">Next Year</option>
-          </select>
-          <input type="date" id="globalAfter" class="date-input" aria-label="Global From Date">
-          <input type="date" id="globalBefore" class="date-input" aria-label="Global To Date">
-          <button id="applyGlobalFilter" class="btn btn-filter" title="Apply date range to all 4 charts">Apply All</button>
-          <button id="clearGlobalFilter" class="btn btn-filter-clear" title="Reset date range for all charts">All Time</button>
-        </div>
-
-        <!-- Report Action Buttons (Print, Email, Save) -->
+        <!-- Report Action Buttons (Print, Save Config, Load Config) -->
         <div class="header-action-btns">
           <button id="printReportBtn" class="btn btn-secondary btn-header-action" title="Print or save PDF report">
             <span>🖨️</span> Print
           </button>
-          <button id="emailDigestBtn" class="btn btn-secondary btn-header-action" title="Send email report digest">
-            <span>📧</span> Email
+          <button id="saveConfigBtn" class="btn btn-secondary btn-header-action" title="Export report config JSON file to share with coworkers">
+            <span>💾</span> Save Config
           </button>
-          <button id="saveCsvBtn" class="btn btn-secondary btn-header-action" title="Export CSV dataset">
-            <span>💾</span> Save
+          <button id="loadConfigBtn" class="btn btn-secondary btn-header-action" title="Load report config JSON file">
+            <span>📂</span> Load Config
           </button>
+          <input type="file" id="configFileInput" accept=".json" style="display:none;">
         </div>
 
         <!-- Light Mode Toggle -->
@@ -92,13 +66,44 @@
       </div>
     </header>
 
+    <!-- Sub-Header Toolbar for Global Date Controls -->
+    <div class="sub-header-toolbar card-glow">
+      <div class="global-date-filters">
+        <span class="global-filter-label">🌐 Global Date Range:</span>
+        <select id="globalPreset" class="filter-select date-preset-select" aria-label="Global Relative Time Preset">
+          <option value="custom">Custom Range</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="tomorrow">Tomorrow</option>
+          <option value="this_week">This Week</option>
+          <option value="last_week">Last Week</option>
+          <option value="next_week">Next Week</option>
+          <option value="this_month">This Month</option>
+          <option value="last_month">Last Month</option>
+          <option value="next_month">Next Month</option>
+          <option value="this_quarter">This Quarter</option>
+          <option value="last_quarter">Last Quarter</option>
+          <option value="next_quarter">Next Quarter</option>
+          <option value="this_year">This Year</option>
+          <option value="last_year">Last Year</option>
+          <option value="next_year">Next Year</option>
+        </select>
+        <label for="globalAfter">From</label>
+        <input type="date" id="globalAfter" class="date-input" aria-label="Global From Date">
+        <label for="globalBefore">To</label>
+        <input type="date" id="globalBefore" class="date-input" aria-label="Global To Date">
+        <button id="applyGlobalFilter" class="btn btn-filter" title="Apply date range to all 4 charts">Apply All</button>
+        <button id="clearGlobalFilter" class="btn btn-filter-clear" title="Reset date range for all charts">All Time</button>
+      </div>
+    </div>
+
     <!-- Analytics Charts Section -->
     <section class="charts-grid" aria-label="Analytics Dashboards">
 
       <!-- Chart 1: Event Attendance Bar Chart -->
       <div class="chart-panel card-glow">
         <div class="chart-panel-header">
-          <h3 class="panel-title">🎟️ Event Attendance</h3>
+          <h3 class="panel-title">🎟️ Event Attendance <button class="section-help-btn" data-section="events" title="View report details & data source">ⓘ</button></h3>
           <div class="chart-date-filters">
             <select id="eventsPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
               <option value="custom">Custom Range</option>
@@ -134,7 +139,7 @@
       <!-- Chart 2: Check-Ins Over Time Line Chart -->
       <div class="chart-panel card-glow">
         <div class="chart-panel-header">
-          <h3 class="panel-title">📍 Check-Ins Over Time</h3>
+          <h3 class="panel-title">📍 Check-Ins Over Time <button class="section-help-btn" data-section="checkins" title="View report details & data source">ⓘ</button></h3>
           <div class="chart-date-filters">
             <select id="checkinsPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
               <option value="custom">Custom Range</option>
@@ -170,7 +175,7 @@
       <!-- Chart 3: Activities by Staff Bar Chart -->
       <div class="chart-panel card-glow">
         <div class="chart-panel-header">
-          <h3 class="panel-title">👥 Activities by Staff Member</h3>
+          <h3 class="panel-title">👥 Activities by Staff Member <button class="section-help-btn" data-section="staff" title="View report details & data source">ⓘ</button></h3>
           <div class="chart-date-filters">
             <select id="staffPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
               <option value="custom">Custom Range</option>
@@ -208,7 +213,7 @@
       <!-- Chart 4: Club Check-Ins Bar Chart -->
       <div class="chart-panel card-glow">
         <div class="chart-panel-header">
-          <h3 class="panel-title">♣️ Club Check-Ins by Club</h3>
+          <h3 class="panel-title">♣️ Club Check-Ins by Club <button class="section-help-btn" data-section="clubCheckins" title="View report details & data source">ⓘ</button></h3>
           <div class="chart-date-filters">
             <select id="clubCheckinsPreset" class="filter-select date-preset-select" aria-label="Relative Time Preset">
               <option value="custom">Custom Range</option>
@@ -247,12 +252,17 @@
     <!-- Activity Data Explorer -->
     <section class="data-section card-glow" aria-label="Activity Data Explorer">
       <div class="panel-header-actions">
-        <h3 class="panel-title">Activity Ledger</h3>
+        <h3 class="panel-title">Activity Ledger <button class="section-help-btn" data-section="ledger" title="View report details & data source">ⓘ</button></h3>
         <div class="actions-group">
           <!-- Search -->
           <div class="search-box">
             <span class="search-icon">🔍</span>
             <input type="text" id="tableSearch" placeholder="Search subject or notes...">
+          </div>
+          <!-- Exclusion Filter -->
+          <div class="search-box exclude-box">
+            <span class="search-icon">🚫</span>
+            <input type="text" id="tableExclude" placeholder="Exclude phrase..." value="Check-In" title="Exclude activities matching this phrase">
           </div>
           <!-- Filter: Status -->
           <select id="filterStatus" class="filter-select" aria-label="Filter by Status">
@@ -367,7 +377,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.4.1</span>
+          <span class="version-badge">v1.5.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -392,6 +402,20 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.5.0</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🚫 Added typed exclusion filter to Activity Ledger (defaults to excluding "Check-In").</li>
+                <li>💾 📂 JSON Report Configuration Export & Import to share exact report view settings with coworkers.</li>
+                <li>🌐 Positioned Global Date Range in a dedicated sub-toolbar below header bar.</li>
+                <li>📈 Added dashed Average Line dataset to "Check-Ins Over Time" line chart.</li>
+                <li>ⓘ Interactive ⓘ section help pop-up windows detailing data sources, metrics, and filtering rules.</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.4.1</span>
                 <span class="release-date">July 2026</span>
@@ -551,6 +575,19 @@
           </form>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- Section Help Pop-up Modal -->
+  <div id="sectionHelpModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card info-modal-card">
+      <div class="modal-header">
+        <h4 id="helpModalTitle">Report Documentation</h4>
+        <button id="closeSectionHelpBtn" class="modal-close-btn" aria-label="Close section help modal">×</button>
+      </div>
+      <div class="modal-body info-modal-body">
+        <div id="helpModalContent" class="help-modal-text"></div>
       </div>
     </div>
   </div>
