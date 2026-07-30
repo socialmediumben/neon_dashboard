@@ -754,7 +754,7 @@ function updateStaffFilterUI(allStaffMap) {
   }
 }
 
-// ─── Chart 3: Activities by Staff Bar Chart ──────────────────────────────────
+// ─── Chart 3: Activities by Staff Member (Cumulative Multi-Line Chart) ──────
 function renderStaffChart() {
   const after = document.getElementById('staffAfter').value;
   const before = document.getElementById('staffBefore').value;
@@ -763,7 +763,7 @@ function renderStaffChart() {
   if (after) data = data.filter(a => a['Activity Date'] >= after);
   if (before) data = data.filter(a => a['Activity Date'] <= before);
 
-  // Group by system user - splitting multiple staff members
+  // Extract all unique staff and build activity count map per staff for checkbox filter
   const allStaffMap = {};
   data.forEach(a => {
     const staffList = extractStaffNames(a['Created By']);
@@ -775,27 +775,97 @@ function renderStaffChart() {
   // Render/Update the staff filter checkboxes
   updateStaffFilterUI(allStaffMap);
 
-  // Filter out staff members that are disabled via checkbox
-  const filteredStaffEntries = Object.entries(allStaffMap)
-    .filter(([name]) => !disabledStaffSet.has(name))
-    .sort((a, b) => b[1] - a[1]);
+  // Active staff (checked checkboxes) sorted by total count
+  const activeStaff = Object.keys(allStaffMap)
+    .filter(name => !disabledStaffSet.has(name))
+    .sort((a, b) => allStaffMap[b] - allStaffMap[a]);
 
-  const labels = filteredStaffEntries.map(([name]) => name);
-  const values = filteredStaffEntries.map(([, count]) => count);
+  // Extract all unique dates in ascending order
+  const uniqueDatesSet = new Set();
+  data.forEach(a => {
+    if (a['Activity Date']) uniqueDatesSet.add(a['Activity Date']);
+  });
 
-  console.log(`👥 [Staff Chart] Rendering ${labels.length} staff members (Filtered from ${Object.keys(allStaffMap).length} total).`);
+  let sortedDates = Array.from(uniqueDatesSet).sort();
 
-  // Gradient colors per bar
+  if (sortedDates.length === 0) {
+    if (after && before) {
+      sortedDates = [after, before];
+    } else {
+      sortedDates = [new Date().toISOString().split('T')[0]];
+    }
+  }
+
+  // Create continuous daily timeline array from minDate to maxDate
+  const minDateStr = after || sortedDates[0];
+  const maxDateStr = before || sortedDates[sortedDates.length - 1];
+
+  const timelineDates = [];
+  try {
+    let curr = new Date(minDateStr + 'T00:00:00');
+    const end = new Date(maxDateStr + 'T00:00:00');
+    while (curr <= end) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      timelineDates.push(`${y}-${m}-${d}`);
+      curr.setDate(curr.getDate() + 1);
+    }
+  } catch (err) {
+    timelineDates.push(...sortedDates);
+  }
+
+  // Per staff daily activity count: staffDailyMap[staff][date] = count
+  const staffDailyMap = {};
+  activeStaff.forEach(staff => { staffDailyMap[staff] = {}; });
+
+  data.forEach(a => {
+    const date = a['Activity Date'];
+    if (!date) return;
+    const staffList = extractStaffNames(a['Created By']);
+    staffList.forEach(staff => {
+      if (staffDailyMap[staff]) {
+        staffDailyMap[staff][date] = (staffDailyMap[staff][date] || 0) + 1;
+      }
+    });
+  });
+
   const palette = [
-    'rgba(0, 242, 254, 0.75)',
-    'rgba(157, 78, 221, 0.75)',
-    'rgba(255, 0, 127, 0.75)',
-    'rgba(59, 130, 246, 0.75)',
-    'rgba(16, 185, 129, 0.75)',
-    'rgba(245, 158, 11, 0.75)',
-    'rgba(239, 68, 68, 0.75)',
-    'rgba(99, 102, 241, 0.75)'
+    '#00f2fe',
+    '#9d4edd',
+    '#ff007f',
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#6366f1'
   ];
+
+  // Build cumulative datasets for each active staff
+  const datasets = activeStaff.map((staff, i) => {
+    let cumSum = 0;
+    const cumData = timelineDates.map(date => {
+      const dailyCount = staffDailyMap[staff][date] || 0;
+      cumSum += dailyCount;
+      return cumSum;
+    });
+
+    const color = palette[i % palette.length];
+    return {
+      label: staff,
+      data: cumData,
+      borderColor: color,
+      backgroundColor: color + '22',
+      pointBackgroundColor: color,
+      pointRadius: timelineDates.length > 30 ? 2 : 4,
+      pointHoverRadius: 7,
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2
+    };
+  });
+
+  console.log(`👥 [Staff Chart] Rendering cumulative timeline graph for ${activeStaff.length} staff members across ${timelineDates.length} days.`);
 
   const container = document.getElementById('staffChart').parentElement;
   container.innerHTML = '<canvas id="staffChart"></canvas>';
@@ -808,24 +878,25 @@ function renderStaffChart() {
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 
   staffChartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
-      labels,
-      datasets: [{
-        label: 'Activities',
-        data: values,
-        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
-        borderColor: labels.map((_, i) => palette[i % palette.length].replace('0.75', '1')),
-        borderWidth: 1,
-        borderRadius: 6
-      }]
+      labels: timelineDates,
+      datasets
     },
     options: {
-      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: textColor,
+            font: { family: 'Inter', size: 11, weight: '600' },
+            usePointStyle: true,
+            boxWidth: 8
+          }
+        },
         tooltip: {
           backgroundColor: 'rgba(12,9,25,0.95)',
           titleColor: '#00f2fe',
@@ -836,12 +907,12 @@ function renderStaffChart() {
       },
       scales: {
         x: {
-          beginAtZero: true,
-          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
+          ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
           grid: { color: gridColor }
         },
         y: {
-          ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
+          beginAtZero: true,
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 1 },
           grid: { color: gridColor }
         }
       }
@@ -849,12 +920,25 @@ function renderStaffChart() {
   });
 }
 
-// ─── Chart 4: Club Check-Ins Bar Chart ───────────────────────────────────────
+// Helper to get week start date (Monday) in YYYY-MM-DD
+function getWeekStartDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const mon = new Date(d.setDate(diff));
+  const y = mon.getFullYear();
+  const m = String(mon.getMonth() + 1).padStart(2, '0');
+  const dy = String(mon.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
+// ─── Chart 4: Club Check-Ins Weekly Multi-Line Chart ─────────────────────────
 function renderClubCheckinsChart() {
   const after = document.getElementById('clubCheckinsAfter').value;
   const before = document.getElementById('clubCheckinsBefore').value;
 
-  // Filter activities to subject or type containing "club check-in" (case-insensitive)
+  // Filter activities to subject or type containing "club check-in"
   let clubCheckins = activities.filter(a => {
     const subject = (a['Activity Subject'] || '').toLowerCase();
     const type = (a['Activity Type'] || '').toLowerCase();
@@ -864,29 +948,66 @@ function renderClubCheckinsChart() {
   if (after) clubCheckins = clubCheckins.filter(a => a['Activity Date'] >= after);
   if (before) clubCheckins = clubCheckins.filter(a => a['Activity Date'] <= before);
 
-  // Group by exact Activity Subject (e.g. "Cosplay Club Check-In")
-  const counts = {};
+  // Group by Club Name and Week Start Date
+  const clubNamesSet = new Set();
+  const weekStartDatesSet = new Set();
+  const clubWeeklyCounts = {}; // clubWeeklyCounts[clubName][weekStartDate] = count
+
   clubCheckins.forEach(a => {
-    const name = (a['Activity Subject'] || 'Other Club Check-In').trim();
-    counts[name] = (counts[name] || 0) + 1;
+    const clubName = (a['Activity Subject'] || 'Other Club Check-In').trim();
+    const weekStart = getWeekStartDate(a['Activity Date']);
+    if (!weekStart) return;
+
+    clubNamesSet.add(clubName);
+    weekStartDatesSet.add(weekStart);
+
+    if (!clubWeeklyCounts[clubName]) clubWeeklyCounts[clubName] = {};
+    clubWeeklyCounts[clubName][weekStart] = (clubWeeklyCounts[clubName][weekStart] || 0) + 1;
   });
 
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const labels = sorted.map(([name]) => name);
-  const values = sorted.map(([, count]) => count);
+  const sortedWeekStarts = Array.from(weekStartDatesSet).sort();
+  const sortedClubNames = Array.from(clubNamesSet).sort();
 
-  console.log(`♣️ [Club Check-Ins Chart] Rendering ${labels.length} distinct club check-in types.`);
+  // Format week labels as "Week of M/D"
+  const weekLabels = sortedWeekStarts.map(wStr => {
+    const parts = wStr.split('-');
+    if (parts.length === 3) {
+      return `Week of ${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+    }
+    return wStr;
+  });
 
   const palette = [
-    'rgba(16, 185, 129, 0.75)',
-    'rgba(0, 242, 254, 0.75)',
-    'rgba(255, 0, 127, 0.75)',
-    'rgba(157, 78, 221, 0.75)',
-    'rgba(245, 158, 11, 0.75)',
-    'rgba(59, 130, 246, 0.75)',
-    'rgba(239, 68, 68, 0.75)',
-    'rgba(99, 102, 241, 0.75)'
+    '#10b981',
+    '#00f2fe',
+    '#ff007f',
+    '#9d4edd',
+    '#f59e0b',
+    '#3b82f6',
+    '#ef4444',
+    '#6366f1'
   ];
+
+  // Build dataset per club name
+  const datasets = sortedClubNames.map((clubName, i) => {
+    const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
+    const color = palette[i % palette.length];
+
+    return {
+      label: clubName,
+      data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      pointBackgroundColor: color,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      fill: false,
+      tension: 0.3,
+      borderWidth: 2
+    };
+  });
+
+  console.log(`♣️ [Club Check-Ins Chart] Rendering ${datasets.length} club lines across ${sortedWeekStarts.length} weeks.`);
 
   const container = document.getElementById('clubCheckinsChart').parentElement;
   container.innerHTML = '<canvas id="clubCheckinsChart"></canvas>';
@@ -899,27 +1020,26 @@ function renderClubCheckinsChart() {
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 
   clubCheckinsChartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
-      labels: labels.map(l => l.length > 32 ? l.substring(0, 30) + '…' : l),
-      datasets: [{
-        label: 'Instances',
-        data: values,
-        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
-        borderColor: labels.map((_, i) => palette[i % palette.length].replace('0.75', '1')),
-        borderWidth: 1,
-        borderRadius: 6
-      }]
+      labels: weekLabels,
+      datasets
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: textColor,
+            font: { family: 'Inter', size: 11, weight: '600' },
+            usePointStyle: true,
+            boxWidth: 8
+          }
+        },
         tooltip: {
-          callbacks: {
-            title: (items) => labels[items[0].dataIndex]
-          },
           backgroundColor: 'rgba(12,9,25,0.95)',
           titleColor: '#10b981',
           bodyColor: '#a0aec0',
@@ -929,7 +1049,7 @@ function renderClubCheckinsChart() {
       },
       scales: {
         x: {
-          ticks: { color: textColor, font: { family: 'Inter', size: 11 }, maxRotation: 45 },
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
           grid: { color: gridColor }
         },
         y: {
