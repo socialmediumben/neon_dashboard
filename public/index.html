@@ -385,7 +385,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.6.6</span>
+          <span class="version-badge">v1.6.7</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -410,6 +410,17 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.6.7</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🛠️ Fixed <code>loadEventsChart</code> ReferenceError on configuration restore.</li>
+                <li>🏷️ Added Multiple Named App Presets (save, load, and delete custom named dashboard presets in browser storage).</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.6.6</span>
                 <span class="release-date">July 2026</span>
@@ -668,13 +679,29 @@
         <button id="closeConfigChoiceModalBtn" class="modal-close-btn" aria-label="Close config choice modal">×</button>
       </div>
       <div class="modal-body config-choice-body">
+        <!-- Save Options Mode -->
         <div id="configChoiceSaveOptions" class="config-choice-group hidden">
-          <button id="saveConfigToAppBtn" class="btn btn-modal-action">📌 Save to App (Browser Storage)</button>
-          <button id="exportConfigJsonBtn" class="btn btn-modal-action">📄 Export as JSON File</button>
+          <div class="preset-input-box">
+            <label for="configPresetNameInput" style="color:var(--neon-cyan); font-weight:700; font-size:0.85rem;">Preset Name:</label>
+            <input type="text" id="configPresetNameInput" class="date-input" placeholder="e.g. Q3 Staff Report" style="width:100%; margin-top:0.35rem;">
+          </div>
+          <button id="saveConfigToAppBtn" class="btn btn-modal-action">📌 Save Preset to App</button>
+          <div class="modal-divider"><span>OR</span></div>
+          <button id="exportConfigJsonBtn" class="btn btn-modal-action">📄 Export as Shared JSON File</button>
         </div>
+
+        <!-- Load Options Mode -->
         <div id="configChoiceLoadOptions" class="config-choice-group hidden">
-          <button id="loadConfigFromAppBtn" class="btn btn-modal-action">📌 Load from App (Browser Storage)</button>
-          <button id="importConfigJsonBtn" class="btn btn-modal-action">📄 Upload JSON File</button>
+          <div id="appPresetSelectBox" class="preset-input-box">
+            <label for="configPresetSelect" style="color:var(--neon-cyan); font-weight:700; font-size:0.85rem;">Saved App Presets:</label>
+            <select id="configPresetSelect" class="filter-select" style="width:100%; margin-top:0.35rem;"></select>
+            <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
+              <button id="loadConfigFromAppBtn" class="btn btn-modal-action" style="flex:1; justify-content:center;">📌 Load Selected Preset</button>
+              <button id="deleteConfigFromAppBtn" class="btn btn-filter-clear" style="padding:0.75rem;" title="Delete Selected Preset">🗑️</button>
+            </div>
+          </div>
+          <div class="modal-divider"><span>OR</span></div>
+          <button id="importConfigJsonBtn" class="btn btn-modal-action">📄 Upload Shared JSON File</button>
         </div>
       </div>
     </div>

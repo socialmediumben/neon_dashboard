@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.6] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.7] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -701,7 +701,60 @@ function setupHeaderActions() {
   }
 }
 
-// ─── Config Sharing (App Storage & Shared JSON Export/Import) ─────────────────
+// ─── Config Sharing (Named App Presets & Shared JSON Export/Import) ──────────
+function getSavedPresets() {
+  const saved = localStorage.getItem('neon_app_presets');
+  let presets = {};
+  if (saved) {
+    try { presets = JSON.parse(saved); } catch (e) { presets = {}; }
+  }
+  // Migration check for legacy single config
+  const legacy = localStorage.getItem('neon_app_config');
+  if (legacy) {
+    try {
+      presets['Saved Config'] = JSON.parse(legacy);
+      localStorage.setItem('neon_app_presets', JSON.stringify(presets));
+      localStorage.removeItem('neon_app_config');
+    } catch (e) {}
+  }
+  return presets;
+}
+
+function savePresetToApp(name, config) {
+  const presets = getSavedPresets();
+  presets[name] = config;
+  localStorage.setItem('neon_app_presets', JSON.stringify(presets));
+}
+
+function deletePresetFromApp(name) {
+  const presets = getSavedPresets();
+  delete presets[name];
+  localStorage.setItem('neon_app_presets', JSON.stringify(presets));
+}
+
+function renderPresetSelectUI() {
+  const select = document.getElementById('configPresetSelect');
+  if (!select) return;
+  const presets = getSavedPresets();
+  const names = Object.keys(presets).sort();
+
+  if (names.length === 0) {
+    select.innerHTML = '<option value="">(No saved presets found)</option>';
+    select.disabled = true;
+    const loadBtn = document.getElementById('loadConfigFromAppBtn');
+    if (loadBtn) loadBtn.disabled = true;
+  } else {
+    select.disabled = false;
+    const loadBtn = document.getElementById('loadConfigFromAppBtn');
+    if (loadBtn) loadBtn.disabled = false;
+    select.innerHTML = names.map(name => {
+      const p = presets[name];
+      const dateStr = p.savedAt ? new Date(p.savedAt).toLocaleDateString() : '';
+      return `<option value="${name}">${name} ${dateStr ? `(${dateStr})` : ''}</option>`;
+    }).join('');
+  }
+}
+
 function setupConfigSharing() {
   const saveConfigBtn = document.getElementById('saveConfigBtn') || document.getElementById('saveReportConfigBtn');
   const loadConfigBtn = document.getElementById('loadConfigBtn') || document.getElementById('loadReportConfigBtn');
@@ -714,6 +767,7 @@ function setupConfigSharing() {
   const saveToAppBtn = document.getElementById('saveConfigToAppBtn');
   const exportJsonBtn = document.getElementById('exportConfigJsonBtn');
   const loadFromAppBtn = document.getElementById('loadConfigFromAppBtn');
+  const deleteFromAppBtn = document.getElementById('deleteConfigFromAppBtn');
   const importJsonBtn = document.getElementById('importConfigJsonBtn');
 
   if (closeChoiceModalBtn && configChoiceModal) {
@@ -732,7 +786,7 @@ function setupConfigSharing() {
 
   if (saveConfigBtn && configChoiceModal) {
     saveConfigBtn.addEventListener('click', () => {
-      choiceTitle.textContent = '💾 Save Report Configuration';
+      choiceTitle.textContent = '💾 Save Report Preset';
       saveOptionsGroup.classList.remove('hidden');
       loadOptionsGroup.classList.add('hidden');
       configChoiceModal.classList.add('open');
@@ -742,7 +796,8 @@ function setupConfigSharing() {
 
   if (loadConfigBtn && configChoiceModal) {
     loadConfigBtn.addEventListener('click', () => {
-      choiceTitle.textContent = '📂 Load Report Configuration';
+      choiceTitle.textContent = '📂 Load Report Preset';
+      renderPresetSelectUI();
       loadOptionsGroup.classList.remove('hidden');
       saveOptionsGroup.classList.add('hidden');
       configChoiceModal.classList.add('open');
@@ -752,8 +807,17 @@ function setupConfigSharing() {
 
   if (saveToAppBtn) {
     saveToAppBtn.addEventListener('click', () => {
+      const nameInput = document.getElementById('configPresetNameInput');
+      let presetName = (nameInput?.value || '').trim();
+      if (!presetName) presetName = `Preset ${new Date().toLocaleDateString()}`;
+
+      const config = getReportConfigObject();
+      config.presetName = presetName;
+      savePresetToApp(presetName, config);
+
       if (configChoiceModal) configChoiceModal.classList.remove('open');
-      saveConfigToApp();
+      showToast(`📌 Saved preset "${presetName}" to App Storage!`, 'success');
+      if (nameInput) nameInput.value = '';
     });
   }
 
@@ -766,8 +830,30 @@ function setupConfigSharing() {
 
   if (loadFromAppBtn) {
     loadFromAppBtn.addEventListener('click', () => {
-      if (configChoiceModal) configChoiceModal.classList.remove('open');
-      loadConfigFromApp();
+      const select = document.getElementById('configPresetSelect');
+      const selectedName = select?.value;
+      if (!selectedName) {
+        showToast('Please select a preset to load.', 'warning');
+        return;
+      }
+      const presets = getSavedPresets();
+      const config = presets[selectedName];
+      if (config) {
+        applyReportConfigObject(config);
+        if (configChoiceModal) configChoiceModal.classList.remove('open');
+        showToast(`📌 Loaded preset "${selectedName}"!`, 'success');
+      }
+    });
+  }
+
+  if (deleteFromAppBtn) {
+    deleteFromAppBtn.addEventListener('click', () => {
+      const select = document.getElementById('configPresetSelect');
+      const selectedName = select?.value;
+      if (!selectedName) return;
+      deletePresetFromApp(selectedName);
+      renderPresetSelectUI();
+      showToast(`🗑️ Deleted preset "${selectedName}"`, 'info');
     });
   }
 
@@ -792,7 +878,7 @@ function setupConfigSharing() {
 
 function getReportConfigObject() {
   return {
-    version: '1.6.5',
+    version: '1.6.6',
     savedAt: new Date().toISOString(),
     globalDate: {
       preset: document.getElementById('globalPreset')?.value || 'custom',
@@ -867,7 +953,7 @@ function applyReportConfigObject(config) {
     if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
   }
 
-  renderEventsChart();
+  loadEventsChart();
   renderCheckinsChart();
   renderStaffChart();
   renderClubCheckinsChart();
