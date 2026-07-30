@@ -51,7 +51,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.4.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.4.1] App initializing...');
   setupTheme();
   setupInfoModal();
   setupTabs();
