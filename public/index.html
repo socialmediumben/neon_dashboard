@@ -278,22 +278,6 @@
             <span class="search-icon">🚫</span>
             <input type="text" id="tableExclude" placeholder="Exclude phrase..." value="Check-In" title="Exclude activities matching this phrase">
           </div>
-          <!-- Filter: Status -->
-          <select id="filterStatus" class="filter-select" aria-label="Filter by Status">
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Completed">Completed</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Deferred">Deferred</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-          <!-- Filter: Priority -->
-          <select id="filterPriority" class="filter-select" aria-label="Filter by Priority">
-            <option value="">All Priorities</option>
-            <option value="High">High</option>
-            <option value="Normal">Normal</option>
-            <option value="Low">Low</option>
-          </select>
           <!-- Export Button -->
           <button id="exportCsvBtn" class="btn btn-secondary">
             <span>📥</span> Export CSV
@@ -306,13 +290,66 @@
         <table id="activitiesTable" class="interactive-table">
           <thead>
             <tr>
-              <th scope="col" class="sortable" data-sort="Activity Date">Date ↕</th>
-              <th scope="col">Subject</th>
-              <th scope="col">Type</th>
-              <th scope="col">Member ID</th>
-              <th scope="col">Assigned To</th>
-              <th scope="col" class="sortable" data-sort="Status">Status ↕</th>
-              <th scope="col" class="sortable" data-sort="Priority">Priority ↕</th>
+              <th scope="col" class="th-sortable" data-sort="Activity Date">
+                <div class="th-header-box">
+                  <span>Date</span>
+                  <span class="sort-icon">↕</span>
+                </div>
+              </th>
+              <th scope="col" class="th-sortable" data-sort="Activity Subject">
+                <div class="th-header-box">
+                  <span>Subject</span>
+                  <span class="sort-icon">↕</span>
+                </div>
+              </th>
+              <th scope="col">
+                <div class="th-header-box">
+                  <span class="th-sortable" data-sort="Activity Type">Type <span class="sort-icon">↕</span></span>
+                  <select id="filterType" class="th-filter-select" aria-label="Filter by Type">
+                    <option value="">All Types</option>
+                  </select>
+                </div>
+              </th>
+              <th scope="col">
+                <div class="th-header-box">
+                  <span class="th-sortable" data-sort="Account ID">Member ID <span class="sort-icon">↕</span></span>
+                  <select id="filterMemberId" class="th-filter-select" aria-label="Filter by Member ID">
+                    <option value="">All Members</option>
+                  </select>
+                </div>
+              </th>
+              <th scope="col">
+                <div class="th-header-box">
+                  <span class="th-sortable" data-sort="Created By">Assigned To <span class="sort-icon">↕</span></span>
+                  <select id="filterAssignedTo" class="th-filter-select" aria-label="Filter by Assigned To">
+                    <option value="">All Staff</option>
+                  </select>
+                </div>
+              </th>
+              <th scope="col">
+                <div class="th-header-box">
+                  <span class="th-sortable" data-sort="Status">Status <span class="sort-icon">↕</span></span>
+                  <select id="filterStatus" class="th-filter-select" aria-label="Filter by Status">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Deferred">Deferred</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </th>
+              <th scope="col">
+                <div class="th-header-box">
+                  <span class="th-sortable" data-sort="Priority">Priority <span class="sort-icon">↕</span></span>
+                  <select id="filterPriority" class="th-filter-select" aria-label="Filter by Priority">
+                    <option value="">All Priorities</option>
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </th>
               <th scope="col">Actions</th>
             </tr>
           </thead>
@@ -391,7 +428,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.7.1</span>
+          <span class="version-badge">v1.8.0</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -417,11 +454,14 @@
 
             <div class="changelog-item">
               <div class="changelog-version">
-                <span class="version-tag">v1.7.1</span>
+                <span class="version-tag">v1.8.0</span>
                 <span class="release-date">July 2026</span>
               </div>
               <ul class="changelog-list">
-                <li>🛠️ Fixed <code>activeClubNames</code> ReferenceError in Club Check-Ins chart logger.</li>
+                <li>📈 Added dynamic <b>Overall Average</b> line to <b>Activities by Staff Member</b> — tracks the per-day mean across all included and avg-only staff members.</li>
+                <li>🎛️ Refined <b>Club Avg Only</b> behavior: avg-only clubs now contribute to the Overall Average line without rendering their individual dashed line.</li>
+                <li>🔽 Moved Status and Priority filters <b>into column headers</b> of the Activity Ledger, with new inline filter dropdowns for <b>Type</b>, <b>Member ID</b>, and <b>Assigned To</b>.</li>
+                <li>🔃 All Activity Ledger columns now sortable via column header click.</li>
               </ul>
             </div>
 

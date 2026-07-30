@@ -875,21 +875,54 @@ input:checked + .slider:before {
 
 .interactive-table th {
   background-color: var(--bg-obsidian);
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.75rem;
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border-glass);
+  vertical-align: top;
 }
 
-.interactive-table th.sortable {
+.th-header-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.th-sortable {
   cursor: pointer;
+  user-select: none;
+  transition: var(--transition-fast);
 }
 
-.interactive-table th.sortable:hover {
+.th-sortable:hover {
   color: var(--neon-cyan);
+}
+
+.th-filter-select {
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  outline: none;
+  width: 100%;
+  max-width: 120px;
+  text-transform: none;
+}
+
+.th-filter-select:focus {
+  border-color: var(--neon-cyan);
+}
+
+.sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .interactive-table td {

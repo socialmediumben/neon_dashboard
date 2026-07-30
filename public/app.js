@@ -85,6 +85,9 @@ const tableSearch = document.getElementById('tableSearch');
 const tableExclude = document.getElementById('tableExclude');
 const filterStatus = document.getElementById('filterStatus');
 const filterPriority = document.getElementById('filterPriority');
+const filterType = document.getElementById('filterType');
+const filterMemberId = document.getElementById('filterMemberId');
+const filterAssignedTo = document.getElementById('filterAssignedTo');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 const tableBody = document.getElementById('tableBody');
 const paginationInfo = document.getElementById('paginationInfo');
@@ -116,7 +119,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.7.1] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.8.0] App initializing...');
   dowStateMap = loadDowStateMap();
   staffStateMap = loadStaffStateMap();
   clubStateMap = loadClubStateMap();
@@ -303,24 +306,28 @@ function setupTabs() {
 function setupEventListeners() {
   // Table Filters & Search (Instant Client-Side Filtering)
   if (tableSearch) tableSearch.addEventListener('input', () => { currentPage = 1; filterAndRenderTable(); });
+  if (tableExclude) tableExclude.addEventListener('input', () => { currentPage = 1; filterAndRenderTable(); });
   if (filterStatus) filterStatus.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
   if (filterPriority) filterPriority.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
-  
+  if (filterType) filterType.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
+  if (filterMemberId) filterMemberId.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
+  if (filterAssignedTo) filterAssignedTo.addEventListener('change', () => { currentPage = 1; filterAndRenderTable(); });
+
   // CSV Export
   if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportToCsv);
 
-  // Sorting
-  document.querySelectorAll('.interactive-table th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const field = th.dataset.sort;
-      if (sortField === field) {
-        sortAsc = !sortAsc;
-      } else {
-        sortField = field;
-        sortAsc = true;
-      }
-      filterAndRenderTable();
-    });
+  // Sorting — column header .th-sortable spans
+  document.addEventListener('click', (e) => {
+    const sortEl = e.target.closest('.th-sortable[data-sort]');
+    if (!sortEl) return;
+    const field = sortEl.dataset.sort;
+    if (sortField === field) {
+      sortAsc = !sortAsc;
+    } else {
+      sortField = field;
+      sortAsc = true;
+    }
+    filterAndRenderTable();
   });
 
   // Pagination
@@ -461,6 +468,7 @@ async function loadData() {
     
     // Render Ledger Table
     currentPage = 1;
+    populateFilterDropdowns();
     filterAndRenderTable();
 
     // Render client-side charts (checkins + staff + club checkins) from activities data
@@ -1491,6 +1499,13 @@ function renderStaffChart() {
     .filter(name => (staffStateMap[name] || 'full') === 'full')
     .sort((a, b) => allStaffMap[b] - allStaffMap[a]);
 
+  // Avg-only staff: included in Overall Average but not charted
+  const avgOnlyStaff = Object.keys(allStaffMap)
+    .filter(name => (staffStateMap[name] || 'full') === 'avg_only');
+
+  // All staff that contribute to the overall average
+  const avgContributors = [...activeStaff, ...avgOnlyStaff];
+
   // Extract all unique dates in ascending order
   const uniqueDatesSet = new Set();
   data.forEach(a => {
@@ -1526,9 +1541,9 @@ function renderStaffChart() {
     timelineDates.push(...sortedDates);
   }
 
-  // Per staff daily activity count: staffDailyMap[staff][date] = count
+  // Per staff daily activity count (for ALL contributors: full + avg_only)
   const staffDailyMap = {};
-  activeStaff.forEach(staff => { staffDailyMap[staff] = {}; });
+  avgContributors.forEach(staff => { staffDailyMap[staff] = {}; });
 
   data.forEach(a => {
     const date = a['Activity Date'];
@@ -1552,7 +1567,7 @@ function renderStaffChart() {
     '#6366f1'
   ];
 
-  // Build cumulative datasets for each active staff
+  // Build cumulative datasets for each active (chart-visible) staff
   const datasets = activeStaff.map((staff, i) => {
     let cumSum = 0;
     const cumData = timelineDates.map(date => {
@@ -1575,6 +1590,26 @@ function renderStaffChart() {
       borderWidth: 2
     };
   });
+
+  // Build dynamic Overall Average line (avg of daily activity counts across all contributors)
+  if (avgContributors.length > 0) {
+    const isDarkNow = !document.body.classList.contains('light-theme');
+    const overallAvgColor = isDarkNow ? '#ffffff' : '#0f172a';
+    const overallAvgData = timelineDates.map(date => {
+      const dayTotal = avgContributors.reduce((sum, staff) => sum + (staffDailyMap[staff][date] || 0), 0);
+      return parseFloat((dayTotal / avgContributors.length).toFixed(2));
+    });
+    datasets.push({
+      label: `Overall Avg (${avgContributors.length} staff)`,
+      data: overallAvgData,
+      borderColor: overallAvgColor,
+      borderWidth: 2.5,
+      borderDash: [8, 4],
+      pointRadius: 0,
+      fill: false,
+      tension: 0.35
+    });
+  }
 
   console.log(`👥 [Staff Chart] Rendering cumulative timeline graph for ${activeStaff.length} staff members across ${timelineDates.length} days.`);
 
@@ -1764,11 +1799,12 @@ function renderClubCheckinsChart() {
     const data = sortedWeekStarts.map(wStart => clubWeeklyCounts[clubName][wStart] || 0);
     const clubTotal = data.reduce((sum, v) => sum + v, 0);
     const clubAvg = clubTotal / numWeeks;
+    // Include in overall average for both 'full' and 'avg_only'
     activeClubAverages.push(clubAvg);
     const color = palette[i % palette.length];
 
-    // 1) Main weekly trend line (if 'full' state)
     if (state === 'full') {
+      // 1) Main weekly trend line
       datasets.push({
         label: clubName,
         data,
@@ -1781,18 +1817,19 @@ function renderClubCheckinsChart() {
         tension: 0.3,
         borderWidth: 2
       });
-    }
 
-    // 2) Per-Club Average Line (dashed, matching club color)
-    datasets.push({
-      label: `${clubName} Avg (${clubAvg.toFixed(1)}/wk)`,
-      data: sortedWeekStarts.map(() => clubAvg),
-      borderColor: color,
-      borderDash: [5, 5],
-      pointRadius: 0,
-      fill: false,
-      borderWidth: 1.5
-    });
+      // 2) Per-Club Average Line (dashed) — only for 'full' clubs
+      datasets.push({
+        label: `${clubName} Avg (${clubAvg.toFixed(1)}/wk)`,
+        data: sortedWeekStarts.map(() => clubAvg),
+        borderColor: color,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        borderWidth: 1.5
+      });
+    }
+    // 'avg_only' clubs: no individual lines rendered, but clubAvg already pushed above
   });
 
   const isDarkTheme = !document.body.classList.contains('light-theme');
@@ -1868,12 +1905,39 @@ function renderClubCheckinsChart() {
   });
 }
 
+// Populate filter dropdowns dynamically from activities data
+function populateFilterDropdowns() {
+  const types = [...new Set(activities.map(a => a['Activity Type']).filter(Boolean))].sort();
+  const members = [...new Set(activities.map(a => a['Account ID'] || a['Client ID']).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
+  const staff = [...new Set(activities.flatMap(a => extractStaffNames(a['Created By'])).filter(Boolean))].sort();
+
+  const populateSelect = (el, values, labelFn) => {
+    if (!el) return;
+    const current = el.value;
+    el.innerHTML = `<option value="">${el.querySelector('option').textContent}</option>`;
+    values.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = labelFn ? labelFn(v) : v;
+      el.appendChild(opt);
+    });
+    el.value = current; // restore selection
+  };
+
+  populateSelect(filterType, types, null);
+  populateSelect(filterMemberId, members, v => `#${v}`);
+  populateSelect(filterAssignedTo, staff, null);
+}
+
 // Filter, sort, and paginate the local dataset
 function filterAndRenderTable() {
   const searchVal = tableSearch ? tableSearch.value.toLowerCase().trim() : '';
   const excludeVal = tableExclude ? tableExclude.value.toLowerCase().trim() : 'check-in';
   const statusVal = filterStatus ? filterStatus.value : '';
   const priorityVal = filterPriority ? filterPriority.value : '';
+  const typeVal = filterType ? filterType.value : '';
+  const memberIdVal = filterMemberId ? filterMemberId.value : '';
+  const assignedToVal = filterAssignedTo ? filterAssignedTo.value : '';
 
   filteredActivities = activities.filter(a => {
     const subjectLower = (a['Activity Subject'] || '').toLowerCase();
@@ -1890,12 +1954,22 @@ function filterAndRenderTable() {
     const searchMatch = !searchVal || subjectMatch || notesMatch;
 
     // Status match
-    const statusMatch = !statusVal || a.Status.toLowerCase() === statusVal.toLowerCase();
+    const statusMatch = !statusVal || (a.Status || '').toLowerCase() === statusVal.toLowerCase();
 
     // Priority match
-    const priorityMatch = !priorityVal || a.Priority.toLowerCase() === priorityVal.toLowerCase();
+    const priorityMatch = !priorityVal || (a.Priority || '').toLowerCase() === priorityVal.toLowerCase();
 
-    return searchMatch && statusMatch && priorityMatch;
+    // Type match
+    const typeMatch = !typeVal || (a['Activity Type'] || '') === typeVal;
+
+    // Member ID match
+    const memberId = String(a['Account ID'] || a['Client ID'] || '');
+    const memberIdMatch = !memberIdVal || memberId === String(memberIdVal);
+
+    // Assigned To match
+    const assignedToMatch = !assignedToVal || extractStaffNames(a['Created By']).includes(assignedToVal);
+
+    return searchMatch && statusMatch && priorityMatch && typeMatch && memberIdMatch && assignedToMatch;
   });
 
   // Sort
@@ -1948,13 +2022,7 @@ function renderTableOnly() {
   const now = new Date();
   now.setHours(0,0,0,0);
 
-  const typeHeader = document.querySelector('#activitiesTable th:nth-child(3)');
-  const memberHeader = document.querySelector('#activitiesTable th:nth-child(4)');
-  const assignedHeader = document.querySelector('#activitiesTable th:nth-child(5)');
-  
-  if (typeHeader) typeHeader.textContent = 'Type';
-  if (memberHeader) memberHeader.textContent = 'Member ID';
-  if (assignedHeader) assignedHeader.textContent = 'Assigned To';
+  // (Column headers now contain th-header-box divs, not plain text)
 
   tableBody.innerHTML = '';
   const pageData = filteredActivities.slice(startIdx, endIdx);
