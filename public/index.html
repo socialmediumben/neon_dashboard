@@ -94,6 +94,7 @@
         <input type="date" id="globalBefore" class="date-input" aria-label="Global To Date">
         <button id="applyGlobalFilter" class="btn btn-filter" title="Apply date range to all 4 charts">Apply All</button>
         <button id="clearGlobalFilter" class="btn btn-filter-clear" title="Reset date range for all charts">All Time</button>
+        <button id="refreshDataBtn" class="btn btn-action" title="Fetch fresh API data without reloading page">🔄 Refresh Data</button>
       </div>
     </div>
 
@@ -384,7 +385,7 @@
       <div class="modal-header">
         <div class="info-header-title">
           <h4>Neon CRM Intelligence</h4>
-          <span class="version-badge">v1.6.4</span>
+          <span class="version-badge">v1.6.5</span>
         </div>
         <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close info modal">×</button>
       </div>
@@ -409,6 +410,17 @@
             <h5 class="changelog-title">📋 Version History & Changelog</h5>
 
             <div class="changelog-item">
+              <div class="changelog-version">
+                <span class="version-tag">v1.6.5</span>
+                <span class="release-date">July 2026</span>
+              </div>
+              <ul class="changelog-list">
+                <li>🔄 Added 🔄 Refresh Data button to sub-header toolbar for on-demand live API data refetching.</li>
+                <li>📌 📄 Added Dual Save & Load configuration modal (App Browser Storage vs. Shared JSON File Export/Import).</li>
+              </ul>
+            </div>
+
+            <div class="changelog-item" style="margin-top: 1.25rem;">
               <div class="changelog-version">
                 <span class="version-tag">v1.6.4</span>
                 <span class="release-date">July 2026</span>
@@ -634,6 +646,26 @@
           </form>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Dual Save/Load Choice -->
+  <div id="configChoiceModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card config-choice-card">
+      <div class="modal-header">
+        <h4 id="configChoiceModalTitle">⚙️ Configuration Options</h4>
+        <button id="closeConfigChoiceModalBtn" class="modal-close-btn" aria-label="Close config choice modal">×</button>
+      </div>
+      <div class="modal-body config-choice-body">
+        <div id="configChoiceSaveOptions" class="config-choice-group hidden">
+          <button id="saveConfigToAppBtn" class="btn btn-modal-action">📌 Save to App (Browser Storage)</button>
+          <button id="exportConfigJsonBtn" class="btn btn-modal-action">📄 Export as JSON File</button>
+        </div>
+        <div id="configChoiceLoadOptions" class="config-choice-group hidden">
+          <button id="loadConfigFromAppBtn" class="btn btn-modal-action">📌 Load from App (Browser Storage)</button>
+          <button id="importConfigJsonBtn" class="btn btn-modal-action">📄 Upload JSON File</button>
+        </div>
       </div>
     </div>
   </div>

@@ -684,34 +684,116 @@ function resetGlobalDatesAllCharts() {
   showToast('Reset date range to All Time', 'info');
 }
 
-// ─── Header Action Handlers (Print, Save Config, Load Config) ────────────────
+// ─── Header Action Handlers (Print, Save Config, Load Config, Refresh) ───────
 function setupHeaderActions() {
   const printBtn = document.getElementById('printReportBtn');
   if (printBtn) {
     printBtn.addEventListener('click', () => window.print());
   }
+
+  const refreshBtn = document.getElementById('refreshDataBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      showToast('🔄 Refreshing live API data...', 'info');
+      loadData();
+      renderEventsChart();
+    });
+  }
 }
 
-// ─── Config Sharing (Export/Import JSON) ────────────────────────────────────
+// ─── Config Sharing (App Storage & Shared JSON Export/Import) ─────────────────
 function setupConfigSharing() {
-  const saveConfigBtn = document.getElementById('saveConfigBtn');
-  const loadConfigBtn = document.getElementById('loadConfigBtn');
-  const configFileInput = document.getElementById('configFileInput');
+  const saveConfigBtn = document.getElementById('saveReportConfigBtn');
+  const loadConfigBtn = document.getElementById('loadReportConfigBtn');
+  const configChoiceModal = document.getElementById('configChoiceModal');
+  const closeChoiceModalBtn = document.getElementById('closeConfigChoiceModalBtn');
+  const choiceTitle = document.getElementById('configChoiceModalTitle');
+  const saveOptionsGroup = document.getElementById('configChoiceSaveOptions');
+  const loadOptionsGroup = document.getElementById('configChoiceLoadOptions');
 
-  if (saveConfigBtn) {
-    saveConfigBtn.addEventListener('click', exportReportConfigJson);
+  const saveToAppBtn = document.getElementById('saveConfigToAppBtn');
+  const exportJsonBtn = document.getElementById('exportConfigJsonBtn');
+  const loadFromAppBtn = document.getElementById('loadConfigFromAppBtn');
+  const importJsonBtn = document.getElementById('importConfigJsonBtn');
+
+  if (closeChoiceModalBtn && configChoiceModal) {
+    closeChoiceModalBtn.addEventListener('click', () => {
+      configChoiceModal.classList.remove('open');
+      configChoiceModal.setAttribute('aria-hidden', 'true');
+    });
+
+    configChoiceModal.addEventListener('click', (e) => {
+      if (e.target === configChoiceModal) {
+        configChoiceModal.classList.remove('open');
+        configChoiceModal.setAttribute('aria-hidden', 'true');
+      }
+    });
   }
 
-  if (loadConfigBtn && configFileInput) {
-    loadConfigBtn.addEventListener('click', () => configFileInput.click());
-    configFileInput.addEventListener('change', importReportConfigJson);
+  if (saveConfigBtn && configChoiceModal) {
+    saveConfigBtn.addEventListener('click', () => {
+      choiceTitle.textContent = '💾 Save Report Configuration';
+      saveOptionsGroup.classList.remove('hidden');
+      loadOptionsGroup.classList.add('hidden');
+      configChoiceModal.classList.add('open');
+      configChoiceModal.setAttribute('aria-hidden', 'false');
+    });
+  }
+
+  if (loadConfigBtn && configChoiceModal) {
+    loadConfigBtn.addEventListener('click', () => {
+      choiceTitle.textContent = '📂 Load Report Configuration';
+      loadOptionsGroup.classList.remove('hidden');
+      saveOptionsGroup.classList.add('hidden');
+      configChoiceModal.classList.add('open');
+      configChoiceModal.setAttribute('aria-hidden', 'false');
+    });
+  }
+
+  if (saveToAppBtn) {
+    saveToAppBtn.addEventListener('click', () => {
+      if (configChoiceModal) configChoiceModal.classList.remove('open');
+      saveConfigToApp();
+    });
+  }
+
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', () => {
+      if (configChoiceModal) configChoiceModal.classList.remove('open');
+      exportReportConfigJson();
+    });
+  }
+
+  if (loadFromAppBtn) {
+    loadFromAppBtn.addEventListener('click', () => {
+      if (configChoiceModal) configChoiceModal.classList.remove('open');
+      loadConfigFromApp();
+    });
+  }
+
+  if (importJsonBtn) {
+    importJsonBtn.addEventListener('click', () => {
+      if (configChoiceModal) configChoiceModal.classList.remove('open');
+      let fileInput = document.getElementById('configFileInput');
+      if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'configFileInput';
+        fileInput.accept = '.json';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+      }
+      fileInput.value = '';
+      fileInput.onchange = (e) => importReportConfigJson(e);
+      fileInput.click();
+    });
   }
 }
 
-function exportReportConfigJson() {
-  const configData = {
-    version: '1.5.0',
-    exportedAt: new Date().toISOString(),
+function getReportConfigObject() {
+  return {
+    version: '1.6.5',
+    savedAt: new Date().toISOString(),
     globalDate: {
       preset: document.getElementById('globalPreset')?.value || 'custom',
       after: document.getElementById('globalAfter')?.value || '',
@@ -740,6 +822,7 @@ function exportReportConfigJson() {
       }
     },
     disabledStaff: Array.from(disabledStaffSet),
+    disabledClubs: Array.from(disabledClubsSet),
     tableFilters: {
       search: document.getElementById('tableSearch')?.value || '',
       exclude: document.getElementById('tableExclude')?.value || 'Check-In',
@@ -747,7 +830,73 @@ function exportReportConfigJson() {
       priority: document.getElementById('filterPriority')?.value || ''
     }
   };
+}
 
+function applyReportConfigObject(config) {
+  if (!config) return;
+  
+  if (config.globalDate) {
+    if (document.getElementById('globalPreset')) document.getElementById('globalPreset').value = config.globalDate.preset || 'custom';
+    if (document.getElementById('globalAfter')) document.getElementById('globalAfter').value = config.globalDate.after || '';
+    if (document.getElementById('globalBefore')) document.getElementById('globalBefore').value = config.globalDate.before || '';
+  }
+
+  if (config.charts) {
+    Object.keys(config.charts).forEach(prefix => {
+      const item = config.charts[prefix];
+      if (document.getElementById(`${prefix}Preset`)) document.getElementById(`${prefix}Preset`).value = item.preset || 'custom';
+      if (document.getElementById(`${prefix}After`)) document.getElementById(`${prefix}After`).value = item.after || '';
+      if (document.getElementById(`${prefix}Before`)) document.getElementById(`${prefix}Before`).value = item.before || '';
+    });
+  }
+
+  if (Array.isArray(config.disabledStaff)) {
+    disabledStaffSet = new Set(config.disabledStaff);
+    saveDisabledStaff();
+  }
+
+  if (Array.isArray(config.disabledClubs)) {
+    disabledClubsSet = new Set(config.disabledClubs);
+    saveDisabledClubs();
+  }
+
+  if (config.tableFilters) {
+    if (document.getElementById('tableSearch')) document.getElementById('tableSearch').value = config.tableFilters.search || '';
+    if (document.getElementById('tableExclude')) document.getElementById('tableExclude').value = config.tableFilters.exclude || 'Check-In';
+    if (document.getElementById('filterStatus')) document.getElementById('filterStatus').value = config.tableFilters.status || '';
+    if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
+  }
+
+  renderEventsChart();
+  renderCheckinsChart();
+  renderStaffChart();
+  renderClubCheckinsChart();
+  filterAndRenderTable();
+}
+
+function saveConfigToApp() {
+  const config = getReportConfigObject();
+  localStorage.setItem('neon_app_config', JSON.stringify(config));
+  showToast('📌 Report configuration saved to App Browser Storage!', 'success');
+}
+
+function loadConfigFromApp() {
+  const saved = localStorage.getItem('neon_app_config');
+  if (!saved) {
+    showToast('No saved configuration found in App Browser Storage.', 'warning');
+    return;
+  }
+  try {
+    const config = JSON.parse(saved);
+    applyReportConfigObject(config);
+    showToast('📌 Loaded report configuration from App Browser Storage!', 'success');
+  } catch (err) {
+    showToast(`Error loading saved configuration: ${err.message}`, 'error');
+  }
+}
+
+function exportReportConfigJson() {
+  const configData = getReportConfigObject();
   const jsonStr = JSON.stringify(configData, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -758,7 +907,7 @@ function exportReportConfigJson() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  showToast('Exported report configuration JSON file!', 'success');
+  showToast('📄 Exported report configuration JSON file!', 'success');
 }
 
 function importReportConfigJson(e) {
@@ -769,52 +918,12 @@ function importReportConfigJson(e) {
   reader.onload = (event) => {
     try {
       const config = JSON.parse(event.target.result);
-      
-      // Apply global date
-      if (config.globalDate) {
-        if (document.getElementById('globalPreset')) document.getElementById('globalPreset').value = config.globalDate.preset || 'custom';
-        if (document.getElementById('globalAfter')) document.getElementById('globalAfter').value = config.globalDate.after || '';
-        if (document.getElementById('globalBefore')) document.getElementById('globalBefore').value = config.globalDate.before || '';
-      }
-
-      // Apply per-chart dates
-      if (config.charts) {
-        Object.keys(config.charts).forEach(prefix => {
-          const item = config.charts[prefix];
-          if (document.getElementById(`${prefix}Preset`)) document.getElementById(`${prefix}Preset`).value = item.preset || 'custom';
-          if (document.getElementById(`${prefix}After`)) document.getElementById(`${prefix}After`).value = item.after || '';
-          if (document.getElementById(`${prefix}Before`)) document.getElementById(`${prefix}Before`).value = item.before || '';
-        });
-      }
-
-      // Apply disabled staff
-      if (Array.isArray(config.disabledStaff)) {
-        disabledStaffSet = new Set(config.disabledStaff);
-        saveDisabledStaff();
-      }
-
-      // Apply table filters
-      if (config.tableFilters) {
-        if (document.getElementById('tableSearch')) document.getElementById('tableSearch').value = config.tableFilters.search || '';
-        if (document.getElementById('tableExclude')) document.getElementById('tableExclude').value = config.tableFilters.exclude || '';
-        if (document.getElementById('filterStatus')) document.getElementById('filterStatus').value = config.tableFilters.status || '';
-        if (document.getElementById('filterPriority')) document.getElementById('filterPriority').value = config.tableFilters.priority || '';
-      }
-
-      // Reload all charts and table
-      loadEventsChart();
-      renderCheckinsChart();
-      renderStaffChart();
-      renderClubCheckinsChart();
-      filterAndRenderTable();
-
-      showToast('Successfully loaded report configuration!', 'success');
+      applyReportConfigObject(config);
+      showToast('📄 Successfully loaded report configuration JSON file!', 'success');
     } catch (err) {
       console.error('Failed to parse config JSON:', err);
       showToast(`Invalid config JSON file: ${err.message}`, 'error');
     }
-    // Reset file input value so user can re-select same file if needed
-    e.target.value = '';
   };
   reader.readAsText(file);
 }
