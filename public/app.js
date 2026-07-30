@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.2] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.3] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -390,9 +390,19 @@ async function loadData() {
 
   try {
     const res = await fetch(url);
+    const contentType = res.headers.get('content-type') || '';
+
     if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || 'Error fetching activities.');
+      let errMsg = `HTTP ${res.status} ${res.statusText}`;
+      if (contentType.includes('application/json')) {
+        const errData = await res.json();
+        errMsg = errData.message || errMsg;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Server returned non-JSON response (HTTP ${res.status})`);
     }
 
     const data = await res.json();
@@ -833,9 +843,21 @@ async function loadEventsChart() {
 
   try {
     const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to load events.');
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status} ${res.statusText}`;
+      if (contentType.includes('application/json')) {
+        const errData = await res.json();
+        errMsg = errData.message || errMsg;
+      }
+      throw new Error(errMsg);
+    }
 
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Server returned non-JSON response (HTTP ${res.status})`);
+    }
+
+    const data = await res.json();
     const events = (data.events || []).sort((a, b) => new Date(a['Event Date']) - new Date(b['Event Date']));
     console.log(`🎟️ [Events Chart] Rendering ${events.length} events.`);
 
