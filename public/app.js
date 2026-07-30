@@ -70,7 +70,7 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 [Neon CRM Dashboard v1.6.0] App initializing...');
+  console.log('🚀 [Neon CRM Dashboard v1.6.1] App initializing...');
   loadDisabledStaff();
   loadDisabledClubs();
   setupTheme();
@@ -1014,7 +1014,16 @@ function renderCheckinsChart() {
 }
 
 // ─── Staff Filter & Multi-Staff Attribution Helpers ─────────────────────────
-let disabledStaffSet = new Set(JSON.parse(localStorage.getItem('neon_disabled_staff') || '[]'));
+function loadDisabledStaff() {
+  const saved = localStorage.getItem('neon_disabled_staff');
+  if (saved) {
+    try {
+      disabledStaffSet = new Set(JSON.parse(saved));
+    } catch (e) {
+      disabledStaffSet = new Set();
+    }
+  }
+}
 
 function saveDisabledStaff() {
   localStorage.setItem('neon_disabled_staff', JSON.stringify([...disabledStaffSet]));
